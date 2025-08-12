@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -11,73 +11,27 @@ import {
   faEye,
   faTimes,
   faEnvelope,
-  faUserPlus,
-  faUserMinus,
   faExclamationCircle,
   faCog,
 } from "@fortawesome/free-solid-svg-icons";
+import { useAuth } from "@/context/AuthContext";
 
-type Notification = {
-  id: number;
-  title: string;
-  body: string;
-  createdAt: Date;
-  seen: boolean;
-  type: "info" | "warning" | "alert" | "system";
-};
+type NotificationType = "info" | "warning" | "alert" | "system";
 
-const notifications: Notification[] = [
-  {
-    id: 1,
-    title: "New user registered",
-    body: "A new user with username 'jsmith' has just registered. Please verify their account details and assign appropriate permissions.",
-    createdAt: new Date("2025-06-20T14:30:00"),
-    seen: false,
-    type: "info",
-  },
-  {
-    id: 2,
-    title: "Account deregistered",
-    body: "User 'adoe' has deregistered their account on 28 Mar, 2025. All associated data has been archived per company policy.",
-    createdAt: new Date("2025-06-19T09:15:00"),
-    seen: true,
-    type: "info",
-  },
-  {
-    id: 3,
-    title: "System Maintenance Scheduled",
-    body: "Planned system maintenance is scheduled for this Saturday from 2:00 AM to 6:00 AM. All services will be temporarily unavailable during this window.",
-    createdAt: new Date("2025-06-18T16:45:00"),
-    seen: false,
-    type: "system",
-  },
-  {
-    id: 4,
-    title: "Security Alert: Unusual Activity",
-    body: "We detected unusual login attempts on your account from a new device. If this was not you, please reset your password immediately.",
-    createdAt: new Date("2025-06-17T11:20:00"),
-    seen: false,
-    type: "alert",
-  },
-  {
-    id: 5,
-    title: "Permission Change Request",
-    body: "User 'mjones' has requested elevated permissions for the finance module. Action required: review and approve/deny.",
-    createdAt: new Date("2025-06-16T09:30:00"),
-    seen: true,
-    type: "warning",
-  },
-  {
-    id: 6,
-    title: "New Message Received",
-    body: "You have received a new message from 'admin@company.com' regarding quarterly reports. Please review at your earliest convenience.",
-    createdAt: new Date("2025-06-15T14:15:00"),
-    seen: true,
-    type: "info",
-  },
-];
+interface Notification {
+  NotificationID: number;
+  NotificationType: string;
+  EntityType: string;
+  EntityID: number;
+  Title: string;
+  Message: string;
+  CreatedAt: string;
+  Metadata: string | null;
+  IsRead: boolean;
+  ReadAt: string | null;
+}
 
-const NotificationTypeIcon = ({ type }: { type: Notification["type"] }) => {
+const NotificationTypeIcon = ({ type }: { type: NotificationType }) => {
   const iconMap = {
     info: faEnvelope,
     warning: faExclamationCircle,
@@ -102,42 +56,220 @@ const NotificationTypeIcon = ({ type }: { type: Notification["type"] }) => {
 export default function NotificationsClient() {
   const [active, setActive] = useState<Notification | null>(null);
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
-  const [filter, setFilter] = useState<"all" | Notification["type"]>("all");
+  const [filter, setFilter] = useState<"all" | NotificationType>("all");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { user, isAuthenticated } = useAuth();
 
+  // Map API notification types to our UI types
+  const mapNotificationType = (apiType: string): NotificationType => {
+    switch (apiType) {
+      case "BROADCAST":
+        return "info";
+      case "MESSAGE_FLAGGED":
+        return "alert";
+      case "SYSTEM_ALERT":
+        return "system";
+      case "PERMISSION_CHANGE":
+        return "warning";
+      default:
+        return "info";
+    }
+  };
+
+  // Fetch notifications from API
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(
+        `https://myappapi-yo3p.onrender.com/api/Leader/${user?.UserID}/notifications`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch notifications");
+      }
+
+      const data = await response.json();
+      setNotifications(data);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching notifications:", err);
+      setError("Failed to load notifications. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Mark notification as read
+  const markAsRead = async (id: number) => {
+    try {
+      // Optimistically update UI
+      setNotifications((prev) =>
+        prev.map((n) => (n.NotificationID === id ? { ...n, IsRead: true } : n))
+      );
+
+      // Update in backend
+      const response = await fetch(
+        `https://myappapi-yo3p.onrender.com/api/Leader/notifications/${id}/read`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: user?.UserID }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to mark notification as read");
+      }
+
+      // Refresh data to ensure consistency
+      fetchNotifications();
+    } catch (err) {
+      console.error("Error marking notification as read:", err);
+      // Revert UI change on error
+      setNotifications((prev) =>
+        prev.map((n) => (n.NotificationID === id ? { ...n, IsRead: false } : n))
+      );
+    }
+  };
+
+  // Mark all notifications as read
+  const markAllAsRead = async () => {
+    try {
+      // Optimistically update UI
+      setNotifications((prev) => prev.map((n) => ({ ...n, IsRead: true })));
+
+      // Mark all unread notifications
+      const unreadIds = notifications
+        .filter((n) => !n.IsRead)
+        .map((n) => n.NotificationID);
+
+      for (const id of unreadIds) {
+        await fetch(
+          `https://myappapi-yo3p.onrender.com/api/Leader/notifications/${id}/read`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: user?.UserID }),
+          }
+        );
+      }
+
+      // Refresh data to ensure consistency
+      fetchNotifications();
+    } catch (err) {
+      console.error("Error marking all notifications as read:", err);
+      // Revert UI changes on error
+      fetchNotifications();
+    }
+  };
+
+  // Fetch notifications on component mount and when user changes
+  useEffect(() => {
+    if (user?.UserID) {
+      fetchNotifications();
+    }
+  }, [user?.UserID]);
+
+  // Process and sort notifications
   const sorted = useMemo(() => {
     let filtered = [...notifications];
 
     if (filter !== "all") {
-      filtered = filtered.filter((n) => n.type === filter);
+      filtered = filtered.filter(
+        (n) => mapNotificationType(n.NotificationType) === filter
+      );
     }
 
     return filtered.sort((a, b) => {
+      const dateA = new Date(a.CreatedAt);
+      const dateB = new Date(b.CreatedAt);
+
       if (sortOrder === "newest") {
-        return b.createdAt.getTime() - a.createdAt.getTime();
+        return dateB.getTime() - dateA.getTime();
       } else {
-        return a.createdAt.getTime() - b.createdAt.getTime();
+        return dateA.getTime() - dateB.getTime();
       }
     });
-  }, [sortOrder, filter]);
+  }, [notifications, sortOrder, filter]);
 
-  const markAsRead = (id: number) => {
-    // In a real app, this would update the backend
-    const notification = notifications.find((n) => n.id === id);
-    if (notification) notification.seen = true;
-  };
+  // Count unread notifications
+  const unreadCount = useMemo(() => {
+    return notifications.filter((n) => !n.IsRead).length;
+  }, [notifications]);
 
-  const markAllAsRead = () => {
-    notifications.forEach((n) => (n.seen = true));
-  };
+  if (loading) {
+    return (
+      <div className="page-inner">
+        <div
+          className="d-flex justify-content-center align-items-center"
+          style={{
+            minHeight: "400px",
+            background: "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
+            borderRadius: "12px",
+            color: "white",
+          }}
+        >
+          <div className="text-center">
+            <div
+              className="spinner-border mb-3"
+              role="status"
+              style={{
+                width: "3rem",
+                height: "3rem",
+                borderColor: "rgba(255,255,255,0.3)",
+                borderTopColor: "white",
+              }}
+            >
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            <h5 className="fw-light">Loading community members...</h5>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 flex items-center justify-center">
+        <div className="bg-white rounded-xl shadow-md p-8 max-w-md text-center">
+          <div className="text-red-500 text-4xl mb-4">
+            <FontAwesomeIcon icon={faExclamationCircle} />
+          </div>
+          <h2 className="text-xl font-semibold mb-2">
+            Error Loading Notifications
+          </h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <button
+            onClick={fetchNotifications}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
         <div className="bg-white rounded-xl shadow-md overflow-hidden">
           {/* Header */}
-          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-6">
+          <div
+            className="px-6 py-6"
+            style={{
+              background: "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
+            }}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <FontAwesomeIcon
@@ -147,14 +279,14 @@ export default function NotificationsClient() {
                 <h1 className="text-2xl font-bold text-white">Notifications</h1>
               </div>
               <span className="bg-red-500 bg-opacity-20 text-white px-3 py-1 rounded-full text-sm">
-                {notifications.filter((n) => !n.seen).length} unread
+                {unreadCount} unread
               </span>
             </div>
 
             <div className="mt-4 flex flex-wrap gap-3">
               <div className="relative">
                 <button
-                  className="flex items-center bg-purple-400 bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition"
+                  className="flex items-center bg-purple-500 bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition"
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                 >
                   <FontAwesomeIcon icon={faSort} className="mr-2" />
@@ -195,7 +327,7 @@ export default function NotificationsClient() {
 
               <div className="relative">
                 <button
-                  className="flex items-center bg-purple-400 bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition"
+                  className="flex items-center bg-purple-500 bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition"
                   onClick={() => setFilterOpen(!filterOpen)}
                 >
                   <FontAwesomeIcon icon={faFilter} className="mr-2" />
@@ -277,8 +409,9 @@ export default function NotificationsClient() {
               </div>
 
               <button
-                className="flex items-center bg-purple-400 bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition"
+                className="flex items-center bg-purple-500 bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition"
                 onClick={markAllAsRead}
+                disabled={unreadCount === 0}
               >
                 <FontAwesomeIcon icon={faCheck} className="mr-2" />
                 Mark all as read
@@ -301,31 +434,36 @@ export default function NotificationsClient() {
             ) : (
               sorted.map((n) => (
                 <div
-                  key={n.id}
+                  key={n.NotificationID}
                   className={`p-5 hover:bg-gray-50 transition ${
-                    !n.seen ? "bg-blue-50" : ""
+                    !n.IsRead ? "bg-blue-50" : ""
                   }`}
                 >
                   <div className="flex">
                     <div className="mr-4 mt-1">
-                      <NotificationTypeIcon type={n.type} />
+                      <NotificationTypeIcon
+                        type={mapNotificationType(n.NotificationType)}
+                      />
                     </div>
 
                     <div className="flex-1">
                       <div className="flex justify-between">
                         <h3 className="font-medium text-gray-900">
-                          {n.title}
-                          {!n.seen && (
+                          {n.Title}
+                          {!n.IsRead && (
                             <span className="ml-2 inline-block h-2 w-2 rounded-full bg-blue-500"></span>
                           )}
                         </h3>
                         <div className="text-sm text-gray-500">
-                          {format(n.createdAt, "MMM d, yyyy 'at' h:mm a")}
+                          {format(
+                            new Date(n.CreatedAt),
+                            "MMM d, yyyy 'at' h:mm a"
+                          )}
                         </div>
                       </div>
 
                       <p className="mt-1 text-gray-600 text-sm line-clamp-2">
-                        {n.body}
+                        {n.Message}
                       </p>
 
                       <div className="mt-3 flex space-x-3">
@@ -337,10 +475,10 @@ export default function NotificationsClient() {
                           View details
                         </button>
 
-                        {!n.seen && (
+                        {!n.IsRead && (
                           <button
                             className="text-sm font-medium text-gray-500 hover:text-gray-700"
-                            onClick={() => markAsRead(n.id)}
+                            onClick={() => markAsRead(n.NotificationID)}
                           >
                             <FontAwesomeIcon icon={faCheck} className="mr-1" />
                             Mark as read
@@ -356,7 +494,7 @@ export default function NotificationsClient() {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Notification Detail Modal */}
       {active && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div
@@ -366,9 +504,11 @@ export default function NotificationsClient() {
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
               <div className="flex justify-between items-center">
                 <div className="flex items-center">
-                  <NotificationTypeIcon type={active.type} />
+                  <NotificationTypeIcon
+                    type={mapNotificationType(active.NotificationType)}
+                  />
                   <h3 className="ml-3 text-lg font-semibold text-white">
-                    {active.title}
+                    {active.Title}
                   </h3>
                 </div>
                 <button
@@ -381,19 +521,22 @@ export default function NotificationsClient() {
             </div>
 
             <div className="p-6">
-              <p className="text-gray-700 mb-6">{active.body}</p>
+              <p className="text-gray-700 mb-6">{active.Message}</p>
 
               <div className="flex justify-between items-center">
                 <div className="text-sm text-gray-500">
-                  {format(active.createdAt, "MMM d, yyyy 'at' h:mm a")}
+                  {format(
+                    new Date(active.CreatedAt),
+                    "MMM d, yyyy 'at' h:mm a"
+                  )}
                 </div>
 
                 <div className="flex space-x-3">
-                  {!active.seen && (
+                  {!active.IsRead && (
                     <button
                       className="text-sm text-indigo-600 hover:text-indigo-800"
                       onClick={() => {
-                        markAsRead(active.id);
+                        markAsRead(active.NotificationID);
                         setActive(null);
                       }}
                     >

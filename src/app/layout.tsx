@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
+import Footer from "../components/footer";
 import { usePathname } from "next/navigation";
 import useKaiAdminInit from "@/hooks/useKaiAdminInit";
 import { AuthProvider } from "@/context/AuthContext";
@@ -86,6 +87,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <div id="modal-root"></div>
         <AuthProvider>
           <NotificationProvider>
             {isAuthPage ? (

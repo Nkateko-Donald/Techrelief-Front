@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Chart from "chart.js/auto";
+import { usePathname } from "next/navigation";
 
 export default function Analytics() {
   // Refs for all charts
@@ -10,6 +11,8 @@ export default function Analytics() {
   const typeRef = useRef<HTMLCanvasElement>(null);
   const respondersRef = useRef<HTMLCanvasElement>(null);
   const funnelRef = useRef<HTMLCanvasElement>(null);
+  const pathname = usePathname();
+  const isAnalyticsPage = pathname === "/Analytics";
 
   const [timeFrame, setTimeFrame] = useState<"day" | "week" | "month" | "year">(
     "month"
@@ -22,7 +25,15 @@ export default function Analytics() {
     time: { labels: [] as string[], data: [] as number[] },
     type: { labels: [] as string[], data: [] as number[] },
     responders: { labels: [] as string[], data: [] as number[] },
-    funnel: { logged: 0, accepted: 0, resolved: 0, escalated: 0 },
+    funnel: {
+      logged: 0,
+      accepted: 0,
+      resolved: 0,
+      ongoing: 0,
+      abandoned: 0,
+      falseReport: 0,
+      escalated: 0,
+    },
   });
 
   // Refs to store chart instances
@@ -135,8 +146,15 @@ export default function Analytics() {
       const typeData = typeRes.ok
         ? await typeRes.json()
         : {
-            labels: ["Crime", "Medical", "Fire", "Natural Disaster", "Other"],
-            data: [200, 150, 100, 80, 30],
+            labels: [
+              "Crime",
+              "Medical",
+              "Fire",
+              "Natural Disaster",
+              "SOS",
+              "Other",
+            ],
+            data: [200, 150, 100, 80, 30, 10],
           };
 
       const respondersData = respondersRes.ok
@@ -152,7 +170,15 @@ export default function Analytics() {
 
       const funnelData = funnelRes.ok
         ? await funnelRes.json()
-        : { logged: 100, accepted: 80, resolved: 60, escalated: 15 };
+        : {
+            logged: 100,
+            accepted: 80,
+            resolved: 60,
+            ongoing: 5,
+            abandoned: 6,
+            falseReport: 8,
+            escalated: 15,
+          };
 
       setChartData({
         overview: overviewData,
@@ -184,8 +210,15 @@ export default function Analytics() {
           data: [30, 45, 60, 50, 70, 80, 90, 85, 100, 110, 95, 120],
         },
         type: {
-          labels: ["Crime", "Medical", "Fire", "Natural Disaster", "Other"],
-          data: [200, 150, 100, 80, 30],
+          labels: [
+            "Crime",
+            "Medical",
+            "Fire",
+            "Natural Disaster",
+            "SOS",
+            "Other",
+          ],
+          data: [200, 150, 100, 80, 30, 10],
         },
         responders: {
           labels: [
@@ -195,11 +228,28 @@ export default function Analytics() {
           ],
           data: [25, 18, 12],
         },
-        funnel: { logged: 100, accepted: 80, resolved: 60, escalated: 15 },
+        funnel: {
+          logged: 100,
+          accepted: 80,
+          resolved: 60,
+          ongoing: 5,
+          abandoned: 6,
+          falseReport: 8,
+          escalated: 15,
+        },
       });
     } finally {
       setLoading(false);
     }
+  };
+  const funnelColors = {
+    blue: "#36A2EB", // Primary blue (existing)
+    teal: "#4BC0C0", // Teal (existing)
+    green: "#32CD32", // Lime green (vibrant)
+    coral: "#FF7F50", // Coral (warm)
+    slate: "#6A5ACD", // Slate blue (cool)
+    amber: "#FFBF00", // Amber (golden)
+    crimson: "#DC143C", // Crimson (rich red)
   };
 
   // Create or update charts
@@ -470,26 +520,43 @@ export default function Analytics() {
         funnelChartRef.current = new Chart(ctx, {
           type: "bar",
           data: {
-            labels: ["Logged", "Accepted", "Resolved", "Escalated"],
+            labels: [
+              "Logged",
+              "Accepted",
+              "Resolved",
+              "ongoing",
+              "abandoned",
+              "False Reports",
+              "Escalated",
+            ],
             datasets: [
               {
                 data: [
                   chartData.funnel.logged,
                   chartData.funnel.accepted,
                   chartData.funnel.resolved,
+                  chartData.funnel.ongoing,
+                  chartData.funnel.abandoned,
+                  chartData.funnel.falseReport,
                   chartData.funnel.escalated,
                 ],
                 backgroundColor: [
-                  colorPalette.chart.blue,
-                  colorPalette.chart.teal,
-                  colorPalette.chart.green,
-                  colorPalette.chart.red,
+                  funnelColors.blue, // Logged
+                  funnelColors.teal, // Accepted
+                  funnelColors.green, // Resolved
+                  funnelColors.coral, // Ongoing
+                  funnelColors.slate, // Abandoned
+                  funnelColors.amber, // False Reports
+                  funnelColors.crimson, // Escalated
                 ],
                 borderColor: [
-                  colorPalette.chart.blue,
-                  colorPalette.chart.teal,
-                  colorPalette.chart.green,
-                  colorPalette.chart.red,
+                  funnelColors.blue, // Logged
+                  funnelColors.teal, // Accepted
+                  funnelColors.green, // Resolved
+                  funnelColors.coral, // Ongoing
+                  funnelColors.slate, // Abandoned
+                  funnelColors.amber, // False Reports
+                  funnelColors.crimson, // Escalated
                 ],
                 borderWidth: 2,
                 borderRadius: 8,
@@ -527,16 +594,28 @@ export default function Analytics() {
     }
   };
 
+  // 1. Fetch analytics data - only on analytics page
   useEffect(() => {
-    fetchAnalyticsData();
-  }, [timeFrame]);
-
-  useEffect(() => {
-    if (!loading) {
-      setTimeout(renderCharts, 50);
+    if (isAnalyticsPage) {
+      fetchAnalyticsData();
     }
-  }, [chartData, loading]);
+  }, [timeFrame, isAnalyticsPage]); // Add page check
 
+  // 2. Render charts - only on analytics page
+  useEffect(() => {
+    if (!isAnalyticsPage) return;
+
+    if (!loading) {
+      // Use requestAnimationFrame for better timing
+      const timer = requestAnimationFrame(() => {
+        renderCharts();
+      });
+
+      return () => cancelAnimationFrame(timer);
+    }
+  }, [chartData, loading, isAnalyticsPage]); // Add page check
+
+  // 3. Cleanup charts - runs regardless of page
   useEffect(() => {
     return () => {
       // Cleanup all charts on unmount
@@ -555,7 +634,7 @@ export default function Analytics() {
           className="d-flex justify-content-center align-items-center"
           style={{
             minHeight: "500px",
-            background: colorPalette.gradients.primary,
+            background: "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
             borderRadius: "16px",
             color: "white",
             margin: "2rem",
@@ -593,7 +672,7 @@ export default function Analytics() {
       <div
         className="mb-4 p-4 text-white"
         style={{
-          background: colorPalette.gradients.primary,
+          background: "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
           borderRadius: "16px",
           boxShadow: "0 8px 32px rgba(102, 126, 234, 0.3)",
         }}
@@ -654,7 +733,7 @@ export default function Analytics() {
                   className="card border-0 h-100"
                   style={{
                     background:
-                      "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                      "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
                     color: "white",
                     borderRadius: "16px",
                     boxShadow: "0 8px 32px rgba(102, 126, 234, 0.3)",
@@ -730,7 +809,8 @@ export default function Analytics() {
                     style={{
                       width: "48px",
                       height: "48px",
-                      background: colorPalette.gradients.primary,
+                      background:
+                        "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
                       color: "white",
                     }}
                   >

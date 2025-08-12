@@ -4,6 +4,10 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import SleepModal from "@/components/SleepModal";
+import { usePathname } from "next/navigation"; // Correct import
+import MisuseDetailsModal from "@/components/MisuseDetailsModal"; // New component
+import FlagDetailsModal from "@/components/FlagDetailsModal"; // New component
+//import { useLocation } from "react-router-dom";
 
 interface CommunityMember {
   UserID: number;
@@ -15,6 +19,7 @@ interface CommunityMember {
   isActive: boolean;
   Role: string;
   flagCount: number;
+  misuseCount: number; // New property
 }
 
 const CommunityMemberManagement = () => {
@@ -25,14 +30,20 @@ const CommunityMemberManagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showSleepModal, setShowSleepModal] = useState(false);
+  const [showMisuseModal, setShowMisuseModal] = useState(false); // New state
+  const [showFlagModal, setShowFlagModal] = useState(false); // New state
   const [selectedMember, setSelectedMember] = useState<CommunityMember | null>(
     null
   );
-  const [sortBy, setSortBy] = useState<"ID" | "Name" | "Responses" | "Flags">(
-    "ID"
-  );
+  const [selectedMisuses, setSelectedMisuses] = useState<any[]>([]); // New state
+  const [selectedFlags, setSelectedFlags] = useState<any[]>([]); // New state
+  const [sortBy, setSortBy] = useState<
+    "ID" | "Name" | "Responses" | "Flags" | "Misuses"
+  >("ID");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+  const pathname = usePathname(); // Use this hook instead
+  const isManageUsersPage = pathname === "/ManageUsers";
 
   const BASE =
     process.env.NEXT_PUBLIC_BACKEND_URL || "https://myappapi-yo3p.onrender.com";
@@ -45,25 +56,35 @@ const CommunityMemberManagement = () => {
       console.log("Fetching volunteers...");
       const volunteersRes = await fetch(`${BASE}/api/volunteers`);
 
-      const volunteersText = await volunteersRes.text();
-      console.log("Volunteers response:", volunteersText);
-      const volunteersData = JSON.parse(volunteersText);
+      if (!volunteersRes.ok) {
+        throw new Error("Failed to fetch volunteers");
+      }
+
+      const volunteersData = await volunteersRes.json();
 
       console.log("Fetching flag counts...");
       const flagRes = await fetch(`${BASE}/api/flags/counts`);
+      const flagCountsData = flagRes.ok ? await flagRes.json() : {};
 
-      const flagText = await flagRes.text();
-      console.log("Flag counts response:", flagText);
-      const flagCountsData = flagRes.ok ? JSON.parse(flagText) : {};
+      console.log("Fetching misuse counts...");
+      const misuseRes = await fetch(`${BASE}/api/misuses/counts`);
+      const misuseCountsData = misuseRes.ok ? await misuseRes.json() : {};
+
+      if (
+        !volunteersData.volunteers ||
+        !Array.isArray(volunteersData.volunteers)
+      ) {
+        throw new Error("Invalid volunteers data format");
+      }
 
       const updatedVolunteers = volunteersData.volunteers.map(
         (volunteer: CommunityMember) => ({
           ...volunteer,
           flagCount: flagCountsData[volunteer.UserID.toString()] || 0,
+          misuseCount: misuseCountsData[volunteer.UserID.toString()] || 0, // Add misuse count
         })
       );
 
-      console.log("Updated volunteers:", updatedVolunteers);
       setMembers(updatedVolunteers);
     } catch (err: any) {
       console.error("Error fetching volunteers:", err);
@@ -73,7 +94,44 @@ const CommunityMemberManagement = () => {
     }
   };
 
-  const handleSleepUser = async (userId: number, durationHours: number) => {
+  // New function to handle opening misuse modal
+  const handleOpenMisuseModal = async (userId: number) => {
+    try {
+      const response = await fetch(`${BASE}/api/misuses/user/${userId}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch misuse details");
+      }
+      const misuses = await response.json();
+      setSelectedMisuses(misuses);
+      setShowMisuseModal(true);
+    } catch (err) {
+      console.error("Error fetching misuses:", err);
+      setError("Failed to load misuse details");
+    }
+  };
+
+  // Update the handleOpenFlagModal function
+  const handleOpenFlagModal = async (userId: number) => {
+    try {
+      const response = await fetch(`${BASE}/api/flags/user/${userId}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch flag details");
+      }
+      const flags = await response.json();
+      setSelectedFlags(flags);
+      setShowFlagModal(true);
+    } catch (err) {
+      console.error("Error fetching flags:", err);
+      setError("Failed to load flag details");
+    }
+  };
+
+  //handle sleep
+  const handleSleepUser = async (
+    userId: number,
+    durationHours: number,
+    sleepType: string
+  ) => {
     try {
       const response = await fetch(`${BASE}/api/sleep`, {
         method: "POST",
@@ -84,6 +142,7 @@ const CommunityMemberManagement = () => {
         body: JSON.stringify({
           userId,
           durationHours,
+          sleepType, // Add this new parameter
         }),
       });
 
@@ -105,6 +164,35 @@ const CommunityMemberManagement = () => {
     }
   };
 
+  // Add this useEffect hook in your component
+  /*useEffect(() => {
+    const checkSleepStatus = async () => {
+      try {
+        const response = await fetch(`${BASE}/api/sleep/check-expired`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+
+        if (!response.ok) {
+          console.error("Failed to check sleep status");
+        }
+      } catch (err) {
+        console.error("Error checking sleep status:", err);
+      }
+    };
+
+    // Check sleep status on page load
+    checkSleepStatus();
+
+    // Optional: Set up periodic checks (every 5 minutes)
+    const interval = setInterval(checkSleepStatus, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, []);*/
+
   const sortedMembers = [...members].sort((a, b) => {
     if (sortBy === "Name") {
       return a.FullName.localeCompare(b.FullName);
@@ -115,6 +203,10 @@ const CommunityMemberManagement = () => {
     if (sortBy === "Flags") {
       return b.flagCount - a.flagCount;
     }
+    if (sortBy === "Misuses") {
+      // New sort option
+      return b.misuseCount - a.misuseCount;
+    }
     return a.UserID - b.UserID;
   });
 
@@ -124,10 +216,10 @@ const CommunityMemberManagement = () => {
   const totalPages = Math.ceil(members.length / itemsPerPage);
 
   useEffect(() => {
-    if (currentUser?.UserID) {
+    if (isManageUsersPage && currentUser?.UserID) {
       fetchVolunteers();
     }
-  }, [currentUser]);
+  }, [currentUser, isManageUsersPage]);
 
   const getFlagIcon = (flagCount: number) => {
     if (flagCount === 0) return { icon: "fas fa-shield-alt", color: "#28a745" };
@@ -135,6 +227,14 @@ const CommunityMemberManagement = () => {
     if (flagCount <= 5)
       return { icon: "fas fa-exclamation-triangle", color: "#fd7e14" };
     return { icon: "fas fa-ban", color: "#dc3545" };
+  };
+  const getMisuseIcon = (misuseCount: number) => {
+    if (misuseCount === 0)
+      return { icon: "fas fa-check-circle", color: "#28a745" };
+    if (misuseCount <= 2)
+      return { icon: "fas fa-exclamation-circle", color: "#ffc107" };
+    if (misuseCount <= 5) return { icon: "fas fa-radiation", color: "#fd7e14" };
+    return { icon: "fas fa-skull-crossbones", color: "#dc3545" };
   };
 
   if (loading) {
@@ -144,7 +244,7 @@ const CommunityMemberManagement = () => {
           className="d-flex justify-content-center align-items-center"
           style={{
             minHeight: "400px",
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            background: "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
             borderRadius: "12px",
             color: "white",
           }}
@@ -209,7 +309,8 @@ const CommunityMemberManagement = () => {
         <div
           className="card-header border-0 py-4"
           style={{
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            //background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            background: "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
             color: "white",
           }}
         >
@@ -278,31 +379,35 @@ const CommunityMemberManagement = () => {
                     overflow: "hidden",
                   }}
                 >
-                  {["Name", "Responses", "ID", "Flags"].map((option) => (
-                    <li key={option}>
-                      <button
-                        className="dropdown-item d-flex align-items-center py-2"
-                        onClick={() => {
-                          setSortBy(option as any);
-                          setIsDropdownOpen(false);
-                        }}
-                        style={{ transition: "all 0.2s ease" }}
-                      >
-                        <i
-                          className={`fas fa-${
-                            option === "Name"
-                              ? "user"
-                              : option === "Responses"
-                              ? "reply"
-                              : option === "ID"
-                              ? "hashtag"
-                              : "flag"
-                          } me-2 text-muted`}
-                        ></i>
-                        {option}
-                      </button>
-                    </li>
-                  ))}
+                  {["Name", "Responses", "ID", "Flags", "Misuses"].map(
+                    (option) => (
+                      <li key={option}>
+                        <button
+                          className="dropdown-item d-flex align-items-center py-2"
+                          onClick={() => {
+                            setSortBy(option as any);
+                            setIsDropdownOpen(false);
+                          }}
+                          style={{ transition: "all 0.2s ease" }}
+                        >
+                          <i
+                            className={`fas fa-${
+                              option === "Name"
+                                ? "user"
+                                : option === "Responses"
+                                ? "reply"
+                                : option === "ID"
+                                ? "hashtag"
+                                : option === "Flags"
+                                ? "flag"
+                                : "exclamation"
+                            } me-2 text-muted`}
+                          ></i>
+                          {option}
+                        </button>
+                      </li>
+                    )
+                  )}
                 </ul>
               </div>
             </div>
@@ -313,6 +418,7 @@ const CommunityMemberManagement = () => {
         <div className="card-body p-0">
           <div className="table-responsive">
             <table className="table mb-0" style={{ fontSize: "0.95rem" }}>
+              {/* Updated Table Header */}
               <thead
                 style={{
                   background: "#f8f9fa",
@@ -326,9 +432,7 @@ const CommunityMemberManagement = () => {
                   <th className="fw-bold text-dark py-3">
                     <i className="fas fa-envelope me-2 text-info"></i>Email
                   </th>
-                  <th className="fw-bold text-dark py-3">
-                    <i className="fas fa-phone me-2 text-success"></i>Phone
-                  </th>
+                  {/* Removed PhoneNumber column */}
                   <th className="fw-bold text-dark py-3 text-center">
                     <i className="fas fa-paper-plane me-2 text-warning"></i>
                     Requests
@@ -338,6 +442,11 @@ const CommunityMemberManagement = () => {
                   </th>
                   <th className="fw-bold text-dark py-3 text-center">
                     <i className="fas fa-flag me-2 text-danger"></i>Flags
+                  </th>
+                  {/* New Misuse Count column */}
+                  <th className="fw-bold text-dark py-3 text-center">
+                    <i className="fas fa-exclamation-circle me-2 text-purple"></i>
+                    Misuses
                   </th>
                   <th className="fw-bold text-dark py-3 text-center">
                     <i className="fas fa-circle me-2 text-success"></i>Status
@@ -363,6 +472,7 @@ const CommunityMemberManagement = () => {
                 ) : (
                   currentItems.map((member, index) => {
                     const flagInfo = getFlagIcon(member.flagCount);
+                    const misuseInfo = getMisuseIcon(member.misuseCount); // New function
                     return (
                       <tr
                         key={member.UserID}
@@ -400,7 +510,7 @@ const CommunityMemberManagement = () => {
                                 width: "40px",
                                 height: "40px",
                                 background:
-                                  "linear-gradient(135deg, #667eea, #764ba2)",
+                                  "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
                                 color: "white",
                                 fontSize: "0.9rem",
                                 fontWeight: "bold",
@@ -438,7 +548,7 @@ const CommunityMemberManagement = () => {
                         <td className="py-3">
                           <div className="text-muted">{member.Email}</div>
                         </td>
-                        <td className="py-3">
+                        {/*<td className="py-3">
                           <span className="text-muted">
                             {member.PhoneNumber || (
                               <span className="text-muted fst-italic">
@@ -447,7 +557,7 @@ const CommunityMemberManagement = () => {
                               </span>
                             )}
                           </span>
-                        </td>
+                        </td>*/}
                         <td className="py-3 text-center">
                           <span
                             className="badge bg-white bg-opacity-10 text-warning border border-warning"
@@ -472,32 +582,74 @@ const CommunityMemberManagement = () => {
                             {member.responses}
                           </span>
                         </td>
+                        {/* Flag Count cell - now clickable */}
                         <td className="py-3 text-center">
-                          <div className="d-flex align-items-center justify-content-center">
-                            <i
-                              className={`${flagInfo.icon} me-2`}
-                              style={{
-                                color: flagInfo.color,
-                                fontSize: "1.1rem",
-                              }}
-                            ></i>
-                            <span
-                              className="badge fw-semibold"
-                              style={{
-                                backgroundColor:
-                                  member.flagCount > 0
-                                    ? flagInfo.color
-                                    : "#6c757d",
-                                color: "white",
-                                fontSize: "0.85rem",
-                                padding: "6px 10px",
-                                borderRadius: "15px",
-                                minWidth: "30px",
-                              }}
-                            >
-                              {member.flagCount}
-                            </span>
-                          </div>
+                          <button
+                            className="btn btn-link p-0"
+                            onClick={() => handleOpenFlagModal(member.UserID)}
+                            disabled={member.flagCount === 0}
+                          >
+                            <div className="d-flex align-items-center justify-content-center">
+                              <i
+                                className={`${flagInfo.icon} me-2`}
+                                style={{
+                                  color: flagInfo.color,
+                                  fontSize: "1.1rem",
+                                }}
+                              ></i>
+                              <span
+                                className="badge fw-semibold"
+                                style={{
+                                  backgroundColor:
+                                    member.flagCount > 0
+                                      ? flagInfo.color
+                                      : "#6c757d",
+                                  color: "white",
+                                  fontSize: "0.85rem",
+                                  padding: "6px 10px",
+                                  borderRadius: "15px",
+                                  minWidth: "30px",
+                                }}
+                              >
+                                {member.flagCount}
+                              </span>
+                            </div>
+                          </button>
+                        </td>
+
+                        {/* New Misuse Count cell */}
+                        <td className="py-3 text-center">
+                          <button
+                            className="btn btn-link p-0"
+                            onClick={() => handleOpenMisuseModal(member.UserID)}
+                            disabled={member.misuseCount === 0}
+                          >
+                            <div className="d-flex align-items-center justify-content-center">
+                              <i
+                                className={`${misuseInfo.icon} me-2`}
+                                style={{
+                                  color: misuseInfo.color,
+                                  fontSize: "1.1rem",
+                                }}
+                              ></i>
+                              <span
+                                className="badge fw-semibold"
+                                style={{
+                                  backgroundColor:
+                                    member.misuseCount > 0
+                                      ? misuseInfo.color
+                                      : "#6c757d",
+                                  color: "white",
+                                  fontSize: "0.85rem",
+                                  padding: "6px 10px",
+                                  borderRadius: "15px",
+                                  minWidth: "30px",
+                                }}
+                              >
+                                {member.misuseCount}
+                              </span>
+                            </div>
+                          </button>
                         </td>
                         <td className="py-3 text-center">
                           <div className="d-flex align-items-center justify-content-center">
@@ -588,7 +740,7 @@ const CommunityMemberManagement = () => {
                   style={{
                     borderRadius: "8px 0 0 8px",
                     background: currentPage === 1 ? "#e9ecef" : "white",
-                    color: currentPage === 1 ? "#6c757d" : "#667eea",
+                    color: currentPage === 1 ? "#6c757d" : "#f00000",
                   }}
                 >
                   <i className="fas fa-angle-double-left me-1"></i>First
@@ -606,7 +758,7 @@ const CommunityMemberManagement = () => {
                   disabled={currentPage === 1}
                   style={{
                     background: currentPage === 1 ? "#e9ecef" : "white",
-                    color: currentPage === 1 ? "#6c757d" : "#667eea",
+                    color: currentPage === 1 ? "#6c757d" : "#f00000",
                   }}
                 >
                   <i className="fas fa-angle-left me-1"></i>Previous
@@ -631,9 +783,9 @@ const CommunityMemberManagement = () => {
                       style={{
                         background:
                           currentPage === page
-                            ? "linear-gradient(135deg, #667eea, #764ba2)"
+                            ? "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)"
                             : "white",
-                        color: currentPage === page ? "white" : "#667eea",
+                        color: currentPage === page ? "white" : "#f00000",
                         minWidth: "45px",
                       }}
                     >
@@ -665,7 +817,7 @@ const CommunityMemberManagement = () => {
                   style={{
                     background:
                       currentPage === totalPages ? "#e9ecef" : "white",
-                    color: currentPage === totalPages ? "#6c757d" : "#667eea",
+                    color: currentPage === totalPages ? "#6c757d" : "#f00000",
                   }}
                 >
                   Next<i className="fas fa-angle-right ms-1"></i>
@@ -685,7 +837,7 @@ const CommunityMemberManagement = () => {
                     borderRadius: "0 8px 8px 0",
                     background:
                       currentPage === totalPages ? "#e9ecef" : "white",
-                    color: currentPage === totalPages ? "#6c757d" : "#667eea",
+                    color: currentPage === totalPages ? "#6c757d" : "#f00000",
                   }}
                 >
                   Last<i className="fas fa-angle-double-right ms-1"></i>
@@ -697,7 +849,7 @@ const CommunityMemberManagement = () => {
           <div
             className="text-center small"
             style={{
-              background: "linear-gradient(135deg, #667eea, #764ba2)",
+              background: "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               fontWeight: "600",
@@ -711,14 +863,30 @@ const CommunityMemberManagement = () => {
         </div>
       </div>
 
+      {/* New Modals */}
+      {showMisuseModal && (
+        <MisuseDetailsModal
+          misuses={selectedMisuses}
+          onClose={() => setShowMisuseModal(false)}
+        />
+      )}
+
+      {showFlagModal && (
+        <FlagDetailsModal
+          flags={selectedFlags}
+          onClose={() => setShowFlagModal(false)}
+        />
+      )}
+
       {/* Sleep Modal */}
       {showSleepModal && selectedMember && (
         <SleepModal
           member={selectedMember}
           onClose={() => setShowSleepModal(false)}
-          onSleep={(duration) =>
-            handleSleepUser(selectedMember.UserID, duration)
-          }
+          onSleep={(
+            duration,
+            sleepType // Add sleepType parameter
+          ) => handleSleepUser(selectedMember.UserID, duration, sleepType)}
         />
       )}
     </div>

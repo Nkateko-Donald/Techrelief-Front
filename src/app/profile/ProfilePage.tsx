@@ -118,7 +118,7 @@ export default function AdminProfilePage() {
             <div
               className="card-header border-0 py-4"
               style={{
-                background: "linear-gradient(135deg, #495057 0%, #6c757d 100%)",
+                background: "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
                 color: "white",
               }}
             >
@@ -484,11 +484,12 @@ export default function AdminProfilePage() {
                   onClick={() => router.push("/settings")}
                   style={{
                     borderRadius: "8px",
-                    border: "2px solid #495057",
+                    border: "2px solid #764ba2",
                     transition: "all 0.2s ease",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "#495057";
+                    e.currentTarget.style.background =
+                      "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)";
                     e.currentTarget.style.color = "white";
                     e.currentTarget.style.transform = "translateY(-1px)";
                     e.currentTarget.style.boxShadow =

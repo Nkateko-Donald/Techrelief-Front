@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { format as formatDate } from "date-fns-tz";
 import { useNotification } from "@/context/NotificationContext";
 import { hasCommunityLeaderAccess } from "@/utils/roleCheck";
+import { usePathname } from "next/navigation";
 
 interface RawMessage {
   MessageID: number;
@@ -22,6 +23,11 @@ interface Message extends RawMessage {
   dateGroup: string;
 }
 
+// In BroadcastPage component
+const generateNotificationLink = (messageId: number) => {
+  return `/BroadCast#msg-${messageId}`;
+};
+
 export default function BroadcastPage() {
   const { user, isAuthenticated } = useAuth();
   const { showNotification } = useNotification();
@@ -35,6 +41,8 @@ export default function BroadcastPage() {
   const [viewingActiveMessages, setViewingActiveMessages] = useState(true);
   const [isCommunityLeader, setIsCommunityLeader] = useState(false);
   const channelId = 1;
+  const pathname = usePathname(); // Use this hook instead
+  const isBroadCastPage = pathname === "/BroadCast";
 
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
   const [currentImage, setCurrentImage] = useState("");
@@ -43,13 +51,6 @@ export default function BroadcastPage() {
     []
   );
   const lastMessageIdRef = useRef(0);
-
-  // Check user role on load
-  useEffect(() => {
-    if (user) {
-      setIsCommunityLeader(hasCommunityLeaderAccess(user.Role));
-    }
-  }, [user]);
 
   const fetchMessages = useCallback(async () => {
     try {
@@ -131,11 +132,28 @@ export default function BroadcastPage() {
     }
   }, [channelId, user, viewingActiveMessages, showNotification]);
 
+  // Check user role on load
   useEffect(() => {
+    if (isBroadCastPage && user) {
+      setIsCommunityLeader(hasCommunityLeaderAccess(user.Role));
+    }
+  }, [user, isBroadCastPage]);
+
+  useEffect(() => {
+    if (!isBroadCastPage) return; // Exit if not on chat page
+
     fetchMessages();
     const interval = setInterval(fetchMessages, 5000);
+
     return () => clearInterval(interval);
-  }, [fetchMessages]);
+  }, [fetchMessages, isBroadCastPage]);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (isBroadCastPage) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isBroadCastPage]);
 
   // Toggle between active/disabled views
   const toggleMessageView = () => {
@@ -202,11 +220,6 @@ export default function BroadcastPage() {
       setError(err.message || "Failed to restore message");
     }
   };
-
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   // Send new message
   const sendMessage = async () => {
@@ -426,7 +439,7 @@ export default function BroadcastPage() {
           className="d-flex justify-content-center align-items-center"
           style={{
             minHeight: "400px",
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            background: "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
             borderRadius: "12px",
             color: "white",
           }}
@@ -452,241 +465,253 @@ export default function BroadcastPage() {
   }
 
   return (
-    <div className={styles.broadcastCard}>
-      <div className={styles.channelHeader}>
-        <div className={styles.headerLeft}>
-          <h5>Channel: Melville Emergency Channel</h5>
-          {isCommunityLeader && (
-            <button onClick={toggleMessageView} className={styles.viewToggle}>
-              {viewingActiveMessages
-                ? "View Disabled Messages"
-                : "View Active Messages"}
-            </button>
-          )}
-        </div>
-        <i className={`fas fa-info-circle text-white ${styles.infoIcon}`}></i>
-      </div>
-
-      {error && (
-        <div className="alert alert-danger mb-3">
-          <i className="fas fa-exclamation-circle me-2"></i>
-          {error}
-        </div>
-      )}
-
-      {/* View Mode Indicator */}
-      {!viewingActiveMessages && (
-        <div className={styles.disabledViewHeader}>
-          <i className="fas fa-eye-slash me-2"></i>
-          Viewing Disabled Messages - Sending is disabled
-        </div>
-      )}
-
-      <div className={styles.messageList}>
-        {messages.length === 0 ? (
-          <div className="text-center py-4 text-muted">
-            <i className="fas fa-comments fa-2x mb-2"></i>
-            <p>No messages yet. Be the first to broadcast!</p>
+    <div className="page-inner">
+      <div className={styles.broadcastCard}>
+        <div className={styles.channelHeader}>
+          <div className={styles.headerLeft}>
+            <h5>Channel: Melville Emergency Channel</h5>
+            {isCommunityLeader && (
+              <button onClick={toggleMessageView} className={styles.viewToggle}>
+                {viewingActiveMessages
+                  ? "View Disabled Messages"
+                  : "View Active Messages"}
+              </button>
+            )}
           </div>
-        ) : (
-          messages.map((msg, index) => {
-            const showSeparator =
-              index === 0 || msg.dateGroup !== messages[index - 1].dateGroup;
+          <i className={`fas fa-info-circle text-white ${styles.infoIcon}`}></i>
+        </div>
 
-            return (
-              <React.Fragment key={msg.MessageID}>
-                {showSeparator && (
-                  <DateSeparator
-                    label={
-                      msg.dateGroup === "today"
-                        ? "Today"
-                        : msg.dateGroup === "yesterday"
-                        ? "Yesterday"
-                        : msg.dateGroup
-                    }
-                  />
-                )}
-                <div
-                  className={`${styles.messageItem} ${
-                    msg.isCurrentUser ? styles.outgoing : styles.incoming
-                  }`}
-                >
-                  <div className={styles.messageBubble}>
-                    {!msg.isCurrentUser && (
-                      <div className="fw-bold small mb-1">{msg.SenderName}</div>
-                    )}
-                    <p className="mb-1">{msg.Content}</p>
+        {error && (
+          <div className={`${styles.alert} ${styles.alertDanger}`}>
+            <i className="fas fa-exclamation-circle me-2"></i>
+            {error}
+          </div>
+        )}
 
-                    {/* Render images */}
-                    {msg.images64.map((img, imgIndex) => {
-                      const src = getImageSrc(img);
-                      return (
-                        <img
-                          key={imgIndex}
-                          src={src}
-                          alt={`Attachment ${imgIndex + 1}`}
-                          className={styles.messageImage}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openImageViewer(src, msg.images64, imgIndex);
-                          }}
-                          onError={(e) => {
-                            e.currentTarget.style.display = "none";
-                          }}
-                        />
-                      );
-                    })}
+        {/* View Mode Indicator */}
+        {!viewingActiveMessages && (
+          <div className={styles.disabledViewHeader}>
+            <i className="fas fa-eye-slash me-2"></i>
+            Viewing Disabled Messages - Sending is disabled
+          </div>
+        )}
 
-                    <div className={styles.messageFooter}>
-                      <small className="text-muted">{msg.displayTime}</small>
+        <div className={styles.messageList}>
+          {messages.length === 0 ? (
+            <div className={styles.emptyState}>
+              <i className="fas fa-comments fa-2x mb-2"></i>
+              <p>No messages yet. Be the first to broadcast!</p>
+            </div>
+          ) : (
+            messages.map((msg, index) => {
+              const showSeparator =
+                index === 0 || msg.dateGroup !== messages[index - 1].dateGroup;
 
-                      {/* Message actions */}
-                      {isCommunityLeader && (
-                        <div className={styles.messageActions}>
-                          {viewingActiveMessages ? (
-                            <button
-                              className={styles.disableButton}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                disableMessage(msg.MessageID);
-                              }}
-                            >
-                              <i className="fas fa-eye-slash"></i> Disable
-                            </button>
-                          ) : (
-                            <button
-                              className={styles.restoreButton}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                restoreMessage(msg.MessageID);
-                              }}
-                            >
-                              <i className="fas fa-eye"></i> Restore
-                            </button>
-                          )}
+              return (
+                <React.Fragment key={msg.MessageID}>
+                  {showSeparator && (
+                    <DateSeparator
+                      label={
+                        msg.dateGroup === "today"
+                          ? "Today"
+                          : msg.dateGroup === "yesterday"
+                          ? "Yesterday"
+                          : msg.dateGroup
+                      }
+                    />
+                  )}
+                  <div
+                    className={`${styles.messageItem} ${
+                      msg.isCurrentUser ? styles.outgoing : styles.incoming
+                    }`}
+                  >
+                    <div className={styles.messageBubble}>
+                      {!msg.isCurrentUser && (
+                        <div className={styles.senderName}>
+                          {msg.SenderName}
                         </div>
                       )}
+                      <p className="mb-1">{msg.Content}</p>
+
+                      {/* Render images */}
+                      {msg.images64.map((img, imgIndex) => {
+                        const src = getImageSrc(img);
+                        return (
+                          <img
+                            key={imgIndex}
+                            src={src}
+                            alt={`Attachment ${imgIndex + 1}`}
+                            className={styles.messageImage}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openImageViewer(src, msg.images64, imgIndex);
+                            }}
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                        );
+                      })}
+
+                      <div className={styles.messageFooter}>
+                        <small className={styles.messageTime}>
+                          {msg.displayTime}
+                        </small>
+
+                        {/* Message actions */}
+                        {isCommunityLeader && (
+                          <div className={styles.messageActions}>
+                            {viewingActiveMessages ? (
+                              <button
+                                className={styles.disableButton}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  disableMessage(msg.MessageID);
+                                }}
+                              >
+                                <i className="fas fa-eye-slash"></i> Disable
+                              </button>
+                            ) : (
+                              <button
+                                className={styles.restoreButton}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  restoreMessage(msg.MessageID);
+                                }}
+                              >
+                                <i className="fas fa-eye"></i> Restore
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </React.Fragment>
-            );
-          })
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Image previews */}
-      {images64.length > 0 && renderImagePreviews()}
-
-      {/* Input area (disabled when viewing disabled messages) */}
-      <div
-        className={styles.messageInputContainer}
-        style={{
-          opacity: viewingActiveMessages ? 1 : 0.6,
-          pointerEvents: viewingActiveMessages ? "all" : "none",
-        }}
-      >
-        <button
-          type="button"
-          className={styles.attachButton}
-          onClick={() => fileInputRef.current?.click()}
-          disabled={!isAuthenticated}
-          aria-label="Attach image"
-        >
-          <i className="fas fa-paperclip"></i>
-        </button>
-
-        <input
-          type="file"
-          ref={fileInputRef}
-          accept="image/*"
-          multiple
-          onChange={handleFileSelect}
-          style={{ display: "none" }}
-        />
-
-        <input
-          type="text"
-          className={styles.messageInput}
-          placeholder="Type your message..."
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          onKeyDown={handleKeyPress}
-          disabled={!isAuthenticated}
-        />
-
-        <button
-          className={styles.sendButton}
-          onClick={sendMessage}
-          disabled={
-            (!newMessage.trim() && images64.length === 0) || !isAuthenticated
-          }
-        >
-          <i className="fas fa-paper-plane"></i>
-        </button>
-      </div>
-
-      {!user && (
-        <div className="alert alert-warning mt-3">
-          <i className="fas fa-exclamation-triangle me-2"></i>
-          You must be logged in to send messages
+                </React.Fragment>
+              );
+            })
+          )}
+          <div ref={messagesEndRef} />
         </div>
-      )}
 
-      {/* Image Viewer Modal */}
-      {isImageViewerOpen && (
-        <div className={styles.modalOverlay} onClick={closeImageViewer}>
-          <div
-            className={styles.modalContent}
-            onClick={(e) => e.stopPropagation()}
+        {/* Image previews */}
+        {images64.length > 0 && renderImagePreviews()}
+
+        {/* Input area (disabled when viewing disabled messages) */}
+        <div
+          className={styles.messageInputContainer}
+          style={{
+            opacity: viewingActiveMessages ? 1 : 0.6,
+            pointerEvents: viewingActiveMessages ? "all" : "none",
+          }}
+        >
+          <button
+            type="button"
+            className={styles.attachButton}
+            onClick={() => fileInputRef.current?.click()}
+            disabled={!isAuthenticated}
+            aria-label="Attach image"
           >
-            <div className={styles.modalHeader}>
-              <h5>
-                Attachment {currentImageIndex + 1} of{" "}
-                {currentMessageImages.length}
-              </h5>
-              <button className={styles.closeButton} onClick={closeImageViewer}>
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
+            <i className="fas fa-paperclip"></i>
+          </button>
 
-            <div className={styles.imageContainer}>
-              <button
-                className={styles.navButton}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigateImage(-1);
-                }}
-              >
-                <i className="fas fa-chevron-left"></i>
-              </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/*"
+            multiple
+            onChange={handleFileSelect}
+            style={{ display: "none" }}
+          />
 
-              <img
-                src={currentImage}
-                alt={`Attachment ${currentImageIndex + 1}`}
-                className={styles.modalImage}
-              />
+          <input
+            type="text"
+            className={styles.messageInput}
+            placeholder="Type your emergency message..."
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyDown={handleKeyPress}
+            disabled={!isAuthenticated}
+          />
 
-              <button
-                className={styles.navButton}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigateImage(1);
-                }}
-              >
-                <i className="fas fa-chevron-right"></i>
-              </button>
-            </div>
+          <button
+            className={styles.sendButton}
+            onClick={sendMessage}
+            disabled={
+              (!newMessage.trim() && images64.length === 0) || !isAuthenticated
+            }
+          >
+            <i className="fas fa-paper-plane"></i>
+          </button>
+        </div>
 
-            <div className={styles.modalFooter}>
-              <button className={styles.downloadButton} onClick={downloadImage}>
-                <i className="fas fa-download"></i> Download
-              </button>
+        {!user && (
+          <div className={`${styles.alert} ${styles.alertWarning}`}>
+            <i className="fas fa-exclamation-triangle me-2"></i>
+            You must be logged in to send messages
+          </div>
+        )}
+
+        {/* Image Viewer Modal */}
+        {isImageViewerOpen && (
+          <div className={styles.modalOverlay} onClick={closeImageViewer}>
+            <div
+              className={styles.modalContent}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className={styles.modalHeader}>
+                <h5>
+                  Attachment {currentImageIndex + 1} of{" "}
+                  {currentMessageImages.length}
+                </h5>
+                <button
+                  className={styles.closeButton}
+                  onClick={closeImageViewer}
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+
+              <div className={styles.imageContainer}>
+                <button
+                  className={styles.navButton}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigateImage(-1);
+                  }}
+                >
+                  <i className="fas fa-chevron-left"></i>
+                </button>
+
+                <img
+                  src={currentImage}
+                  alt={`Attachment ${currentImageIndex + 1}`}
+                  className={styles.modalImage}
+                />
+
+                <button
+                  className={styles.navButton}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigateImage(1);
+                  }}
+                >
+                  <i className="fas fa-chevron-right"></i>
+                </button>
+              </div>
+
+              <div className={styles.modalFooter}>
+                <button
+                  className={styles.downloadButton}
+                  onClick={downloadImage}
+                >
+                  <i className="fas fa-download"></i> Download
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

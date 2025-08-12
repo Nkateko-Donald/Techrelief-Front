@@ -1,0 +1,588 @@
+// VotingSessionPage.tsx
+"use client";
+
+import React, { useState, useEffect } from "react";
+
+// Define types based on the database tables
+type User = {
+  UserID: number;
+  FullName: string;
+  Email: string;
+  ProfilePhoto?: string;
+};
+
+type Nomination = {
+  NominationID: number;
+  NomineeID: number;
+  NominatedBy: number;
+  Status: "Pending" | "Accepted" | "Rejected";
+  NominatedAt: Date;
+  RespondedAt?: Date;
+  Message?: string;
+};
+
+type Vote = {
+  VoteID: number;
+  VoterID: number;
+  NomineeID: number;
+  VotedAt: Date;
+};
+
+type VotingSettings = {
+  SettingID: number;
+  VotingEnabled: boolean;
+  StartDate: Date;
+  EndDate: Date;
+  UpdatedBy: number;
+  UpdatedAt: Date;
+};
+
+// Sample users data
+const sampleUsers: User[] = [
+  {
+    UserID: 1,
+    FullName: "Alex Johnson",
+    Email: "alex.j@example.com",
+    ProfilePhoto: "https://randomuser.me/api/portraits/men/32.jpg",
+  },
+  {
+    UserID: 2,
+    FullName: "Sarah Williams",
+    Email: "sarah.w@example.com",
+    ProfilePhoto: "https://randomuser.me/api/portraits/women/44.jpg",
+  },
+  {
+    UserID: 3,
+    FullName: "Michael Chen",
+    Email: "michael.c@example.com",
+    ProfilePhoto: "https://randomuser.me/api/portraits/men/22.jpg",
+  },
+  {
+    UserID: 4,
+    FullName: "Emily Parker",
+    Email: "emily.p@example.com",
+    ProfilePhoto: "https://randomuser.me/api/portraits/women/68.jpg",
+  },
+  {
+    UserID: 5,
+    FullName: "David Kim",
+    Email: "david.k@example.com",
+    ProfilePhoto: "https://randomuser.me/api/portraits/men/41.jpg",
+  },
+];
+
+// Sample nominations data
+const sampleNominations: Nomination[] = [
+  {
+    NominationID: 1,
+    NomineeID: 2,
+    NominatedBy: 1,
+    Status: "Accepted",
+    NominatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+    RespondedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+    Message: "For outstanding leadership in the Q3 project",
+  },
+  {
+    NominationID: 2,
+    NomineeID: 3,
+    NominatedBy: 4,
+    Status: "Pending",
+    NominatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+    Message: "Consistently provides innovative solutions",
+  },
+  {
+    NominationID: 3,
+    NomineeID: 5,
+    NominatedBy: 2,
+    Status: "Accepted",
+    NominatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+    RespondedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+    Message: "Exceptional client support skills",
+  },
+];
+
+// Sample votes data
+const sampleVotes: Vote[] = [
+  {
+    VoteID: 1,
+    VoterID: 1,
+    NomineeID: 2,
+    VotedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+  },
+  {
+    VoteID: 2,
+    VoterID: 3,
+    NomineeID: 2,
+    VotedAt: new Date(Date.now() - 18 * 60 * 60 * 1000),
+  },
+  {
+    VoteID: 3,
+    VoterID: 4,
+    NomineeID: 3,
+    VotedAt: new Date(Date.now() - 12 * 60 * 60 * 1000),
+  },
+  {
+    VoteID: 4,
+    VoterID: 5,
+    NomineeID: 5,
+    VotedAt: new Date(Date.now() - 10 * 60 * 60 * 1000),
+  },
+  {
+    VoteID: 5,
+    VoterID: 2,
+    NomineeID: 5,
+    VotedAt: new Date(Date.now() - 8 * 60 * 60 * 1000),
+  },
+];
+
+// Initial voting settings
+const initialSettings: VotingSettings = {
+  SettingID: 1,
+  VotingEnabled: false,
+  StartDate: new Date(),
+  EndDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  UpdatedBy: 1,
+  UpdatedAt: new Date(),
+};
+
+export default function VotingSessionPage() {
+  const [votingSettings, setVotingSettings] =
+    useState<VotingSettings>(initialSettings);
+  const [nominations, setNominations] =
+    useState<Nomination[]>(sampleNominations);
+  const [votes, setVotes] = useState<Vote[]>(sampleVotes);
+  const [users] = useState<User[]>(sampleUsers);
+
+  // Toggle voting session
+  const toggleVotingSession = () => {
+    setVotingSettings((prev) => ({
+      ...prev,
+      VotingEnabled: !prev.VotingEnabled,
+      UpdatedAt: new Date(),
+    }));
+  };
+
+  // Update voting dates
+  const updateVotingDates = (start: Date, end: Date) => {
+    setVotingSettings((prev) => ({
+      ...prev,
+      StartDate: start,
+      EndDate: end,
+      UpdatedAt: new Date(),
+    }));
+  };
+
+  // Get user by ID
+  const getUserById = (id: number) => {
+    return users.find((user) => user.UserID === id);
+  };
+
+  // Get vote count for a nominee
+  const getVoteCount = (nomineeId: number) => {
+    return votes.filter((vote) => vote.NomineeID === nomineeId).length;
+  };
+
+  // Format date
+  const formatDate = (date: Date) => {
+    return new Date(date).toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  return (
+    <div className="page-inner">
+      <div
+        className="d-flex justify-content-center align-items-center"
+        style={{
+          borderRadius: "12px",
+          background: "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
+          padding: "1rem",
+        }}
+      >
+        <div className="max-w-6xl mx-auto">
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-6 mb-8">
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-800">
+                  Voting Session Manager
+                </h1>
+                <p className="text-gray-600 mt-1">
+                  Control and monitor ongoing voting sessions
+                </p>
+              </div>
+              <div className="bg-indigo-100 text-indigo-800 px-4 py-2 rounded-full font-medium">
+                {votingSettings.VotingEnabled ? (
+                  <span className="flex items-center">
+                    <span className="h-2 w-2 bg-green-500 rounded-full mr-2"></span>
+                    Voting Active
+                  </span>
+                ) : (
+                  <span className="flex items-center">
+                    <span className="h-2 w-2 bg-gray-500 rounded-full mr-2"></span>
+                    Voting Inactive
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Voting Settings Card */}
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-200 p-6 mb-10">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">
+                Session Settings
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white rounded-lg shadow p-4">
+                  <h3 className="font-medium text-gray-700 mb-2">Status</h3>
+                  <div className="flex items-center">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={votingSettings.VotingEnabled}
+                        onChange={toggleVotingSession}
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                    <span className="ml-3 text-gray-700">
+                      {votingSettings.VotingEnabled ? "Enabled" : "Disabled"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow p-4">
+                  <h3 className="font-medium text-gray-700 mb-2">Start Date</h3>
+                  <div className="text-gray-800 font-medium">
+                    {formatDate(votingSettings.StartDate)}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow p-4">
+                  <h3 className="font-medium text-gray-700 mb-2">End Date</h3>
+                  <div className="text-gray-800 font-medium">
+                    {formatDate(votingSettings.EndDate)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex space-x-4">
+                <button
+                  onClick={() => {
+                    const start = new Date();
+                    const end = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+                    updateVotingDates(start, end);
+                  }}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg transition flex items-center"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 mr-2"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  Set 1 Week Session
+                </button>
+
+                <button
+                  onClick={() => {
+                    const start = new Date();
+                    const end = new Date(Date.now() + 24 * 60 * 60 * 1000);
+                    updateVotingDates(start, end);
+                  }}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg transition flex items-center"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 mr-2"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  Set 24-Hour Session
+                </button>
+
+                <button
+                  onClick={() => toggleVotingSession()}
+                  className={`${
+                    votingSettings.VotingEnabled
+                      ? "bg-red-600 hover:bg-red-700"
+                      : "bg-green-600 hover:bg-green-700"
+                  } text-white px-5 py-2 rounded-lg transition flex items-center`}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 mr-2"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    {votingSettings.VotingEnabled ? (
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z"
+                        clipRule="evenodd"
+                      />
+                    ) : (
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"
+                        clipRule="evenodd"
+                      />
+                    )}
+                  </svg>
+                  {votingSettings.VotingEnabled
+                    ? "Stop Voting"
+                    : "Start Voting"}
+                </button>
+              </div>
+            </div>
+
+            {/* Nominations Section */}
+            <div className="mb-10">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-800">Nominations</h2>
+                <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
+                  {nominations.length} nominations
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {nominations.map((nomination) => {
+                  const nominee = getUserById(nomination.NomineeID);
+                  const nominator = getUserById(nomination.NominatedBy);
+
+                  return (
+                    <div
+                      key={nomination.NominationID}
+                      className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden transition-transform hover:scale-[1.02]"
+                    >
+                      <div
+                        className={`p-4 ${
+                          nomination.Status === "Accepted"
+                            ? "bg-green-50"
+                            : nomination.Status === "Rejected"
+                            ? "bg-red-50"
+                            : "bg-yellow-50"
+                        }`}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center">
+                            <div className="relative">
+                              {nominee?.ProfilePhoto ? (
+                                <img
+                                  src={nominee.ProfilePhoto}
+                                  alt={nominee.FullName}
+                                  className="w-12 h-12 rounded-full object-cover border-2 border-white shadow"
+                                />
+                              ) : (
+                                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-12 h-12" />
+                              )}
+                              <div className="absolute -bottom-1 -right-1 bg-indigo-500 rounded-full p-1">
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-4 w-4 text-white"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M18 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v8a2 2 0 002 2h3l3 3 3-3h3a2 2 0 002-2zM5 7a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H6z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              </div>
+                            </div>
+                            <div className="ml-4">
+                              <h3 className="font-bold text-gray-800">
+                                {nominee?.FullName}
+                              </h3>
+                              <p className="text-sm text-gray-600">
+                                Nominated by {nominator?.FullName}
+                              </p>
+                            </div>
+                          </div>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              nomination.Status === "Accepted"
+                                ? "bg-green-100 text-green-800"
+                                : nomination.Status === "Rejected"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-yellow-100 text-yellow-800"
+                            }`}
+                          >
+                            {nomination.Status}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="p-4">
+                        <p className="text-gray-700 mb-4">
+                          {nomination.Message}
+                        </p>
+
+                        <div className="flex justify-between items-center text-sm text-gray-500">
+                          <span>
+                            Nominated: {formatDate(nomination.NominatedAt)}
+                          </span>
+                          {nomination.RespondedAt && (
+                            <span>
+                              Responded: {formatDate(nomination.RespondedAt)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="border-t border-gray-200 px-4 py-3 bg-gray-50 flex justify-between items-center">
+                        <div className="flex items-center">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5 text-purple-600 mr-1"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                          </svg>
+                          <span className="text-gray-700 font-medium">
+                            {getVoteCount(nomination.NomineeID)} votes
+                          </span>
+                        </div>
+                        <button className="text-indigo-600 hover:text-indigo-800 font-medium text-sm flex items-center">
+                          View Details
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4 ml-1"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Votes Section */}
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-800">
+                  Recent Votes
+                </h2>
+                <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                  {votes.length} votes
+                </span>
+              </div>
+
+              <div className="bg-white rounded-xl shadow overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Voter
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Nominee
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Time
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {votes.map((vote) => {
+                      const voter = getUserById(vote.VoterID);
+                      const nominee = getUserById(vote.NomineeID);
+
+                      return (
+                        <tr key={vote.VoteID} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              {voter?.ProfilePhoto ? (
+                                <img
+                                  src={voter.ProfilePhoto}
+                                  alt={voter.FullName}
+                                  className="w-10 h-10 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-10 h-10" />
+                              )}
+                              <div className="ml-4">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {voter?.FullName}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {voter?.Email}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              {nominee?.ProfilePhoto ? (
+                                <img
+                                  src={nominee.ProfilePhoto}
+                                  alt={nominee.FullName}
+                                  className="w-10 h-10 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-10 h-10" />
+                              )}
+                              <div className="ml-4">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {nominee?.FullName}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {nominee?.Email}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatDate(vote.VotedAt)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center text-white/80 text-sm mt-4">
+            Voting Session Manager • Last updated: {formatDate(new Date())}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

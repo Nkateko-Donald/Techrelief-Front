@@ -46,7 +46,7 @@ function HeatLayerWrapper({ data }: Props) {
 
 export default function HeatmapComponent({ data }: Props) {
   return (
-    <div className="h-[600px] w-full rounded-lg overflow-hidden shadow-lg">
+    <div className="h-[600px] w-full rounded-lg overflow-hidden shadow-lg bg-white">
       <MapContainer
         center={[-26.1887, 28.0105]}
         zoom={13}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import { usePathname } from "next/navigation";
 
 // Dynamically import the MapContainer with no SSR
 const DynamicMap = dynamic(() => import("@/components/MapComponent"), {
@@ -40,6 +41,8 @@ export default function HomePage() {
   const [memberCount, setMemberCount] = useState<number | null>(null);
   const [reportCount, setReportCount] = useState<number | null>(null);
   const [completedCount, setCompletedCount] = useState<number | null>(null);
+  const pathname = usePathname(); // Use this hook instead
+  const isHomePage = pathname === "/Home";
 
   // Simple client-side hydration check
   useEffect(() => {
@@ -48,6 +51,8 @@ export default function HomePage() {
 
   // Fetch reports after component is mounted
   useEffect(() => {
+    if (!isClient || !isHomePage) return;
+
     async function fetchReports() {
       try {
         const res = await fetch(
@@ -125,13 +130,14 @@ export default function HomePage() {
       }
     }
 
-    if (isClient) {
-      fetchReports();
-      fetchCommunityMemberCount();
-      fetchReportCount();
-      fetchCompletedCount();
-    }
-  }, [isClient]);
+    // Execute all fetches in parallel
+    Promise.allSettled([
+      fetchReports(),
+      fetchCommunityMemberCount(),
+      fetchReportCount(),
+      fetchCompletedCount(),
+    ]);
+  }, [isClient, isHomePage]);
 
   return (
     <div className="min-h-screen bg-gradient-to-tr from-green-50 via-blue-50 to-white p-6 font-sans text-gray-800">

@@ -2,17 +2,27 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 
 export default function Sidebar() {
   const pathname = usePathname();
   const [sidebarMinimized, setSidebarMinimized] = useState(false);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
 
   const toggleSidebar = () => {
     document.body.classList.toggle("sidebar_minimize");
     setSidebarMinimized(!sidebarMinimized);
   };
+
+  const toggleAnalytics = () => {
+    if (!sidebarMinimized) setAnalyticsOpen(!analyticsOpen);
+  };
+
+  // Close dropdown when sidebar is minimized
+  useEffect(() => {
+    if (sidebarMinimized) setAnalyticsOpen(false);
+  }, [sidebarMinimized]);
 
   const sidebarStyles = {
     backgroundColor: "#ffffff",
@@ -44,6 +54,10 @@ export default function Sidebar() {
     fontWeight: "500",
   };
 
+  // Check if any analytics child is active
+  const isAnalyticsActive =
+    pathname === "/Analytics" || pathname === "/MapReview";
+
   return (
     <div className="sidebar" style={sidebarStyles}>
       <div className="sidebar-logo">
@@ -54,7 +68,7 @@ export default function Sidebar() {
             style={{ width: "150px", height: "50px" }}
           >
             <Image
-              src="/img/siza.png"
+              src="/img/SIZA_Logo.png"
               alt="navbar brand"
               className="navbar-brand"
               width={150}
@@ -135,7 +149,104 @@ export default function Sidebar() {
               </Link>
             </li>
 
+            {/* Analytics Dropdown - Fixed */}
             <li
+              className={`nav-item ${isAnalyticsActive ? "active" : ""}`}
+              style={isAnalyticsActive ? activeItemStyles : {}}
+            >
+              <div
+                className="nav-link"
+                onClick={toggleAnalytics}
+                style={{
+                  ...linkStyles,
+                  ...(isAnalyticsActive && activeLinkStyles),
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "10px 15px",
+                }}
+              >
+                <i
+                  className="fas fa-chart-bar"
+                  style={{ ...iconStyles, margin: "0 14px" }}
+                ></i>
+                {!sidebarMinimized && (
+                  <>
+                    <p style={{ flex: 1, margin: "0 8px", fontWeight: "bold" }}>
+                      Analytics
+                    </p>
+
+                    <i
+                      className={`fas ${
+                        analyticsOpen ? "fa-chevron-down" : "fa-chevron-right"
+                      }`}
+                      style={{ fontSize: "0.75rem", ...iconStyles }}
+                    ></i>
+                  </>
+                )}
+              </div>
+
+              {!sidebarMinimized && analyticsOpen && (
+                <ul className="nav flex-column" style={{ paddingLeft: "20px" }}>
+                  <li
+                    className={`nav-item ${
+                      pathname === "/Analytics" ? "active" : ""
+                    }`}
+                    style={
+                      pathname === "/Analytics"
+                        ? { ...activeItemStyles, borderLeft: "none" }
+                        : {}
+                    }
+                  >
+                    <Link
+                      href="/Analytics"
+                      style={{
+                        ...linkStyles,
+                        ...(pathname === "/Analytics" && activeLinkStyles),
+                        padding: "8px 15px",
+                        display: "flex",
+                        alignItems: "center",
+                      }}
+                    >
+                      <i
+                        className="fas fa-chart-line"
+                        style={{ marginRight: "10px", ...iconStyles }}
+                      ></i>
+                      <p>Reports</p>
+                    </Link>
+                  </li>
+                  <li
+                    className={`nav-item ${
+                      pathname === "/MapReview" ? "active" : ""
+                    }`}
+                    style={
+                      pathname === "/MapReview"
+                        ? { ...activeItemStyles, borderLeft: "none" }
+                        : {}
+                    }
+                  >
+                    <Link
+                      href="/MapReview"
+                      style={{
+                        ...linkStyles,
+                        ...(pathname === "/MapReview" && activeLinkStyles),
+                        padding: "8px 15px",
+                        display: "flex",
+                        alignItems: "center",
+                      }}
+                    >
+                      <i
+                        className="fas fa-map"
+                        style={{ marginRight: "10px", ...iconStyles }}
+                      ></i>
+                      <p>Heatmap</p>
+                    </Link>
+                  </li>
+                </ul>
+              )}
+            </li>
+
+            {/* <li
               className={`nav-item ${
                 pathname === "/Analytics" ? "active" : ""
               }`}
@@ -170,7 +281,7 @@ export default function Sidebar() {
                 <i className="fas fa-chart-bar" style={iconStyles}></i>
                 <p>HeatMap</p>
               </Link>
-            </li>
+            </li>*/}
 
             <li
               className={`nav-item ${pathname === "/settings" ? "active" : ""}`}
@@ -186,6 +297,23 @@ export default function Sidebar() {
               >
                 <i className="fas fa-cogs" style={iconStyles}></i>
                 <p>Settings</p>
+              </Link>
+            </li>
+
+            <li
+              className={`nav-item ${pathname === "/Votes" ? "active" : ""}`}
+              style={pathname === "/Votes" ? activeItemStyles : {}}
+            >
+              <Link
+                href="/Votes"
+                style={
+                  pathname === "/Votes"
+                    ? { ...linkStyles, ...activeLinkStyles }
+                    : linkStyles
+                }
+              >
+                <i className="fas fa-life-ring" style={iconStyles}></i>
+                <p>Voting Session</p>
               </Link>
             </li>
 

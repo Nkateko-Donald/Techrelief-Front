@@ -1,3 +1,4 @@
+// NotificationContext.tsx
 "use client";
 
 import React, {
@@ -7,17 +8,24 @@ import React, {
   useEffect,
   ReactNode,
   useCallback,
+  useMemo,
 } from "react";
 import { useAuth } from "@/context/AuthContext";
 
 interface NotificationData {
   id: number;
-  type: "user" | "broadcast" | "success";
+  type:
+    | "user"
+    | "broadcast"
+    | "success"
+    | "flagged"
+    | "msgModeration"
+    | "warning";
   title: string;
   content: string;
   isRead: boolean;
   link: string;
-  createdAt: Date; // Only keep this date property
+  createdAt: Date;
 }
 
 interface NotificationContextType {
@@ -26,7 +34,9 @@ interface NotificationContextType {
   markAllAsRead: () => void;
   notifications: NotificationData[];
   unreadCount: number;
-  fetchUnreadCount: () => Promise<void>;
+  //fetchUnreadCount: () => Promise<void>;
+  topUnreadNotifications: NotificationData[]; // NEW: Top 5 unread notifications
+  fetchNotifications: () => Promise<void>; // NEW: Fetch all notifications
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(
@@ -36,9 +46,22 @@ const NotificationContext = createContext<NotificationContextType | undefined>(
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const { user, isAuthenticated } = useAuth();
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  //const [unreadCount, setUnreadCount] = useState(0);
   const BASE =
     process.env.NEXT_PUBLIC_BACKEND_URL || "https://myappapi-yo3p.onrender.com";
+
+  // NEW: Top 3 unread notifications
+  const topUnreadNotifications = useMemo(() => {
+    return notifications
+      .filter((notif) => !notif.isRead)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, 3);
+  }, [notifications]);
+
+  // Calculate unread count directly from notifications
+  const unreadCount = useMemo(() => {
+    return notifications.filter((notif) => !notif.isRead).length;
+  }, [notifications]);
 
   // Add a new notification
   const showNotification = useCallback(
@@ -51,66 +74,123 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         },
         ...prev,
       ]);
-      setUnreadCount((prev) => prev + 1);
     },
     []
   );
 
-  // Mark a notification as read
+  // NEW: Fetch all notifications
+  const fetchNotifications = useCallback(async () => {
+    if (!user?.UserID) return;
+
+    try {
+      const response = await fetch(
+        `${BASE}/api/Leader/${user.UserID}/notifications`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch notifications");
+      }
+
+      const data = await response.json();
+
+      // Map server notifications to client format
+      const mappedNotifications = data.map((n: any) => ({
+        id: n.NotificationID,
+        type: mapNotificationType(n.NotificationType),
+        title: n.Title,
+        content: n.Message,
+        isRead: n.IsRead,
+        link: generateLink(n), // You'll need to generate this based on your data
+        createdAt: new Date(n.CreatedAt),
+      }));
+
+      setNotifications(mappedNotifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+    }
+  }, [BASE, user]);
+
+  // Add this to your notification mapping
+  const generateLink = (notification: any): string => {
+    switch (notification.EntityType) {
+      case "MESSAGE":
+        return `/BroadCast`;
+      case "USER":
+        return `/user/${notification.EntityID}`;
+      case "SYSTEM":
+        return "/settings/notifications";
+      default:
+        return "#";
+    }
+  };
+
+  // NEW: Map server notification type to client type
+  const mapNotificationType = (
+    type: string
+  ):
+    | "user"
+    | "broadcast"
+    | "success"
+    | "flagged"
+    | "msgModeration"
+    | "warning" => {
+    switch (type) {
+      case "BROADCAST":
+        return "broadcast";
+      case "MODERATION_ACTION":
+        return "msgModeration";
+      case "MESSAGE_FLAGGED":
+        return "flagged";
+      case "SYSTEM_ALERT":
+        return "broadcast";
+      case "PERMISSION_CHANGE":
+        return "user";
+      case "USER_SLEEP":
+        return "warning";
+      case "USER_SLEEP_ADMIN":
+        return "warning";
+      default:
+        return "broadcast";
+    }
+  };
+
+  // Update markAsRead function
   const markAsRead = useCallback(
     async (id: number) => {
       try {
-        await fetch(`${BASE}/api/messages/${user?.UserID}/read`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messageId: id }),
-        });
-
+        // ... API call ...
         setNotifications((prev) =>
           prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
         );
-        setUnreadCount((prev) => Math.max(0, prev - 1));
       } catch (error) {
         console.error("Error marking notification as read:", error);
       }
     },
-    [BASE]
+    [BASE, user]
   );
 
   // Mark all notifications as read
+  // Update markAllAsRead function
   const markAllAsRead = useCallback(async () => {
     try {
-      await fetch(`${BASE}/api/messages/${user?.UserID}/mark-all-read`, {
-        method: "POST",
-        credentials: "include",
-      });
-
+      // ... API call ...
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-      setUnreadCount(0);
     } catch (error) {
       console.error("Error marking all as read:", error);
     }
-  }, [BASE]);
+  }, [BASE, user]);
 
-  // Fetch unread count (now without Auth dependency)
-  const fetchUnreadCount = useCallback(async () => {
-    try {
-      const response = await fetch(
-        `${BASE}/api/messages/${user?.UserID}/unread-count`,
-        {
-          credentials: "include",
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Notification count from server:", data.count);
-        setUnreadCount(data.count || 0);
-      }
-    } catch (error) {
-      console.error("Error fetching unread count:", error);
+  // Fetch notifications on mount and when user changes
+  useEffect(() => {
+    if (user?.UserID) {
+      fetchNotifications();
+      //fetchUnreadCount();
     }
-  }, [BASE]);
+  }, [user?.UserID, fetchNotifications]);
 
   return (
     <NotificationContext.Provider
@@ -120,7 +200,9 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         markAllAsRead,
         notifications,
         unreadCount,
-        fetchUnreadCount,
+
+        topUnreadNotifications, // NEW
+        fetchNotifications, // NEW
       }}
     >
       {children}
