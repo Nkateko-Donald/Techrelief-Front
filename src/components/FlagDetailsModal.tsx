@@ -184,6 +184,34 @@ const FlagDetailsModal: React.FC<FlagDetailsModalProps> = ({
                         </div>
                       </div>
                     </div>
+                    {/* Status progress bar */}
+                    <div className="mt-4 pt-3 border-t border-gray-100">
+                      <div className="flex justify-between text-xs text-gray-500 mb-1">
+                        <span>Pending</span>
+                        <span>Reviewed</span>
+                        <span>Resolved</span>
+                      </div>
+                      <div className="flex space-x-1">
+                        {["Pending", "Reviewed", "Resolved"].map(
+                          (status, idx) => (
+                            <div
+                              key={status}
+                              className={`h-1 flex-1 rounded ${
+                                ["Pending", "Reviewed", "Resolved"].indexOf(
+                                  flag.Status
+                                ) >= idx
+                                  ? status === "Pending"
+                                    ? "bg-red-400"
+                                    : status === "Reviewed"
+                                    ? "bg-blue-400"
+                                    : "bg-green-400"
+                                  : "bg-gray-200"
+                              }`}
+                            ></div>
+                          )
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>

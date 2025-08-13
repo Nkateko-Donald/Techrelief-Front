@@ -98,9 +98,8 @@ const CommunityMemberManagement = () => {
   const handleOpenMisuseModal = async (userId: number) => {
     try {
       const response = await fetch(`${BASE}/api/misuses/user/${userId}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch misuse details");
-      }
+      if (!response.ok) throw new Error("Failed to fetch misuse details");
+
       const misuses = await response.json();
       setSelectedMisuses(misuses);
       setShowMisuseModal(true);
@@ -627,10 +626,7 @@ const CommunityMemberManagement = () => {
                             <div className="d-flex align-items-center justify-content-center">
                               <i
                                 className={`${misuseInfo.icon} me-2`}
-                                style={{
-                                  color: misuseInfo.color,
-                                  fontSize: "1.1rem",
-                                }}
+                                style={{ color: misuseInfo.color }}
                               ></i>
                               <span
                                 className="badge fw-semibold"
@@ -640,10 +636,6 @@ const CommunityMemberManagement = () => {
                                       ? misuseInfo.color
                                       : "#6c757d",
                                   color: "white",
-                                  fontSize: "0.85rem",
-                                  padding: "6px 10px",
-                                  borderRadius: "15px",
-                                  minWidth: "30px",
                                 }}
                               >
                                 {member.misuseCount}

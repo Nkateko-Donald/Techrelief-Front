@@ -1,7 +1,6 @@
-// VotingSessionPage.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 
 // Define types based on the database tables
 type User = {
@@ -16,160 +15,166 @@ type Nomination = {
   NomineeID: number;
   NominatedBy: number;
   Status: "Pending" | "Accepted" | "Rejected";
-  NominatedAt: Date;
-  RespondedAt?: Date;
+  NominatedAt: string;
+  RespondedAt?: string;
   Message?: string;
+  VoteCount: number;
 };
 
 type Vote = {
   VoteID: number;
   VoterID: number;
   NomineeID: number;
-  VotedAt: Date;
+  VotedAt: string;
 };
 
 type VotingSettings = {
-  SettingID: number;
+  SettingID?: number;
   VotingEnabled: boolean;
-  StartDate: Date;
-  EndDate: Date;
-  UpdatedBy: number;
-  UpdatedAt: Date;
+  StartDate: string;
+  EndDate: string;
+  UpdatedBy?: number;
+  UpdatedAt?: string;
 };
 
-// Sample users data
-const sampleUsers: User[] = [
-  {
-    UserID: 1,
-    FullName: "Alex Johnson",
-    Email: "alex.j@example.com",
-    ProfilePhoto: "https://randomuser.me/api/portraits/men/32.jpg",
-  },
-  {
-    UserID: 2,
-    FullName: "Sarah Williams",
-    Email: "sarah.w@example.com",
-    ProfilePhoto: "https://randomuser.me/api/portraits/women/44.jpg",
-  },
-  {
-    UserID: 3,
-    FullName: "Michael Chen",
-    Email: "michael.c@example.com",
-    ProfilePhoto: "https://randomuser.me/api/portraits/men/22.jpg",
-  },
-  {
-    UserID: 4,
-    FullName: "Emily Parker",
-    Email: "emily.p@example.com",
-    ProfilePhoto: "https://randomuser.me/api/portraits/women/68.jpg",
-  },
-  {
-    UserID: 5,
-    FullName: "David Kim",
-    Email: "david.k@example.com",
-    ProfilePhoto: "https://randomuser.me/api/portraits/men/41.jpg",
-  },
-];
-
-// Sample nominations data
-const sampleNominations: Nomination[] = [
-  {
-    NominationID: 1,
-    NomineeID: 2,
-    NominatedBy: 1,
-    Status: "Accepted",
-    NominatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    RespondedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-    Message: "For outstanding leadership in the Q3 project",
-  },
-  {
-    NominationID: 2,
-    NomineeID: 3,
-    NominatedBy: 4,
-    Status: "Pending",
-    NominatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-    Message: "Consistently provides innovative solutions",
-  },
-  {
-    NominationID: 3,
-    NomineeID: 5,
-    NominatedBy: 2,
-    Status: "Accepted",
-    NominatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-    RespondedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    Message: "Exceptional client support skills",
-  },
-];
-
-// Sample votes data
-const sampleVotes: Vote[] = [
-  {
-    VoteID: 1,
-    VoterID: 1,
-    NomineeID: 2,
-    VotedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-  },
-  {
-    VoteID: 2,
-    VoterID: 3,
-    NomineeID: 2,
-    VotedAt: new Date(Date.now() - 18 * 60 * 60 * 1000),
-  },
-  {
-    VoteID: 3,
-    VoterID: 4,
-    NomineeID: 3,
-    VotedAt: new Date(Date.now() - 12 * 60 * 60 * 1000),
-  },
-  {
-    VoteID: 4,
-    VoterID: 5,
-    NomineeID: 5,
-    VotedAt: new Date(Date.now() - 10 * 60 * 60 * 1000),
-  },
-  {
-    VoteID: 5,
-    VoterID: 2,
-    NomineeID: 5,
-    VotedAt: new Date(Date.now() - 8 * 60 * 60 * 1000),
-  },
-];
-
-// Initial voting settings
-const initialSettings: VotingSettings = {
-  SettingID: 1,
-  VotingEnabled: false,
-  StartDate: new Date(),
-  EndDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-  UpdatedBy: 1,
-  UpdatedAt: new Date(),
-};
+// Default profile icon component
+const DefaultProfileIcon = ({ className = "w-12 h-12" }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className={`${className} text-gray-400`}
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+    />
+  </svg>
+);
 
 export default function VotingSessionPage() {
-  const [votingSettings, setVotingSettings] =
-    useState<VotingSettings>(initialSettings);
-  const [nominations, setNominations] =
-    useState<Nomination[]>(sampleNominations);
-  const [votes, setVotes] = useState<Vote[]>(sampleVotes);
-  const [users] = useState<User[]>(sampleUsers);
+  const [votingSettings, setVotingSettings] = useState<VotingSettings>({
+    VotingEnabled: false,
+    StartDate: new Date().toISOString(),
+    EndDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+  });
+  const [nominations, setNominations] = useState<Nomination[]>([]);
+  const [votes, setVotes] = useState<Vote[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [voteCounts, setVoteCounts] = useState<Record<number, number>>({});
+  const [loading, setLoading] = useState(true);
+  const [currentUserId] = useState(1); // Replace with actual user ID from auth
+  const [selectedNomination, setSelectedNomination] =
+    useState<Nomination | null>(null);
+
+  // Fetch all data on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+
+        // Fetch voting settings
+        const settingsRes = await fetch(
+          "https://myappapi-yo3p.onrender.com/api/voting-settings"
+        );
+        const settingsData = await settingsRes.json();
+        setVotingSettings(settingsData);
+
+        // Fetch nominations
+        const nominationsRes = await fetch(
+          "https://myappapi-yo3p.onrender.com/api/nominations"
+        );
+        const nominationsData = await nominationsRes.json();
+        setNominations(nominationsData);
+
+        // Fetch votes
+        const votesRes = await fetch(
+          "https://myappapi-yo3p.onrender.com/api/votes"
+        );
+        const votesData = await votesRes.json();
+        setVotes(votesData);
+
+        // Fetch users
+        const usersRes = await fetch(
+          "https://myappapi-yo3p.onrender.com/api/users-minimal"
+        );
+        const usersData = await usersRes.json();
+        setUsers(usersData);
+
+        // Fetch vote counts
+        /*const countsRes = await fetch(
+          "https://myappapi-yo3p.onrender.com/api/votes/count"
+        );
+        const countsData = await countsRes.json();
+        setVoteCounts(countsData);*/
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   // Toggle voting session
-  const toggleVotingSession = () => {
-    setVotingSettings((prev) => ({
-      ...prev,
-      VotingEnabled: !prev.VotingEnabled,
-      UpdatedAt: new Date(),
-    }));
+  const toggleVotingSession = async () => {
+    const newSettings = {
+      ...votingSettings,
+      VotingEnabled: !votingSettings.VotingEnabled,
+      UpdatedBy: currentUserId,
+    };
+
+    try {
+      const response = await fetch("/api/voting-settings", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newSettings),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setVotingSettings(newSettings);
+        }
+      }
+    } catch (error) {
+      console.error("Error updating voting settings:", error);
+    }
   };
 
   // Update voting dates
-  const updateVotingDates = (start: Date, end: Date) => {
-    setVotingSettings((prev) => ({
-      ...prev,
-      StartDate: start,
-      EndDate: end,
-      UpdatedAt: new Date(),
-    }));
+  const updateVotingDates = async (start: Date, end: Date) => {
+    const newSettings = {
+      ...votingSettings,
+      StartDate: start.toISOString(),
+      EndDate: end.toISOString(),
+      UpdatedBy: currentUserId,
+    };
+
+    try {
+      const response = await fetch("/api/voting-settings", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newSettings),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setVotingSettings(newSettings);
+        }
+      }
+    } catch (error) {
+      console.error("Error updating voting dates:", error);
+    }
   };
 
   // Get user by ID
@@ -178,13 +183,14 @@ export default function VotingSessionPage() {
   };
 
   // Get vote count for a nominee
-  const getVoteCount = (nomineeId: number) => {
-    return votes.filter((vote) => vote.NomineeID === nomineeId).length;
-  };
+  /*const getVoteCount = (nomineeId: number) => {
+    return voteCounts[nomineeId] || 0;
+  };*/
 
   // Format date
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleString("en-US", {
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -193,8 +199,203 @@ export default function VotingSessionPage() {
     });
   };
 
+  // Nomination details modal
+  const NominationDetailsModal = ({
+    nomination,
+    onClose,
+  }: {
+    nomination: Nomination;
+    onClose: () => void;
+  }) => {
+    const nominee = getUserById(nomination.NomineeID);
+    const nominator = getUserById(nomination.NominatedBy);
+
+    return (
+      <div
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+        style={{
+          background: "rgba(0, 0, 0, 0.6)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <div className="bg-white rounded-xl shadow-lg max-w-lg w-full">
+          <div className="p-6">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-xl font-bold text-gray-800">
+                Nomination Details
+              </h3>
+              <button
+                onClick={onClose}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex items-center mb-6">
+              <div className="relative">
+                {nominee?.ProfilePhoto ? (
+                  <img
+                    src={nominee.ProfilePhoto}
+                    alt={nominee.FullName}
+                    className="w-16 h-16 rounded-full object-cover border-2 border-white shadow"
+                  />
+                ) : (
+                  <DefaultProfileIcon className="w-16 h-16" />
+                )}
+                <div className="absolute -bottom-1 -right-1 bg-indigo-500 rounded-full p-1">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 text-white"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v8a2 2 0 002 2h3l3 3 3-3h3a2 2 0 002-2zM5 7a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H6z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div className="ml-4">
+                <h3 className="font-bold text-gray-800">{nominee?.FullName}</h3>
+                <p className="text-sm text-gray-600">
+                  Nominated by {nominator?.FullName}
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h4 className="font-medium text-gray-700 mb-2">
+                Nomination Message
+              </h4>
+              <p className="text-gray-700 bg-gray-50 p-4 rounded-lg">
+                {nomination.Message}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div>
+                <h4 className="font-medium text-gray-700 mb-1">Status</h4>
+                <span
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    nomination.Status === "Accepted"
+                      ? "bg-green-100 text-green-800"
+                      : nomination.Status === "Rejected"
+                      ? "bg-red-100 text-red-800"
+                      : "bg-yellow-100 text-yellow-800"
+                  }`}
+                >
+                  {nomination.Status}
+                </span>
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-700 mb-1">
+                  Votes Received
+                </h4>
+                <div className="flex items-center">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 text-purple-600 mr-1"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                  </svg>
+                  <span className="text-gray-700 font-medium">
+                    {nomination.VoteCount} votes
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-medium text-gray-700 mb-1">Nominated At</h4>
+                <p className="text-gray-600">
+                  {formatDate(nomination.NominatedAt)}
+                </p>
+              </div>
+              {nomination.RespondedAt && (
+                <div>
+                  <h4 className="font-medium text-gray-700 mb-1">
+                    Responded At
+                  </h4>
+                  <p className="text-gray-600">
+                    {formatDate(nomination.RespondedAt)}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="bg-gray-50 px-6 py-3 rounded-b-xl flex justify-end">
+            <button
+              onClick={onClose}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="page-inner">
+        <div
+          className="d-flex justify-content-center align-items-center"
+          style={{
+            minHeight: "400px",
+            background: "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
+            borderRadius: "12px",
+            color: "white",
+          }}
+        >
+          <div className="text-center">
+            <div
+              className="spinner-border mb-3"
+              role="status"
+              style={{
+                width: "3rem",
+                height: "3rem",
+                borderColor: "rgba(255,255,255,0.3)",
+                borderTopColor: "white",
+              }}
+            >
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            <h5 className="fw-light">Loading community members...</h5>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="page-inner">
+      {selectedNomination && (
+        <NominationDetailsModal
+          nomination={selectedNomination}
+          onClose={() => setSelectedNomination(null)}
+        />
+      )}
+
       <div
         className="d-flex justify-content-center align-items-center"
         style={{
@@ -389,7 +590,7 @@ export default function VotingSessionPage() {
                                   className="w-12 h-12 rounded-full object-cover border-2 border-white shadow"
                                 />
                               ) : (
-                                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-12 h-12" />
+                                <DefaultProfileIcon />
                               )}
                               <div className="absolute -bottom-1 -right-1 bg-indigo-500 rounded-full p-1">
                                 <svg
@@ -408,10 +609,11 @@ export default function VotingSessionPage() {
                             </div>
                             <div className="ml-4">
                               <h3 className="font-bold text-gray-800">
-                                {nominee?.FullName}
+                                {nominee?.FullName || "Unknown User"}
                               </h3>
                               <p className="text-sm text-gray-600">
-                                Nominated by {nominator?.FullName}
+                                Nominated by{" "}
+                                {nominator?.FullName || "Unknown User"}
                               </p>
                             </div>
                           </div>
@@ -431,7 +633,7 @@ export default function VotingSessionPage() {
 
                       <div className="p-4">
                         <p className="text-gray-700 mb-4">
-                          {nomination.Message}
+                          {nomination.Message || "No message provided"}
                         </p>
 
                         <div className="flex justify-between items-center text-sm text-gray-500">
@@ -457,10 +659,13 @@ export default function VotingSessionPage() {
                             <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
                           </svg>
                           <span className="text-gray-700 font-medium">
-                            {getVoteCount(nomination.NomineeID)} votes
+                            {nomination.VoteCount} votes
                           </span>
                         </div>
-                        <button className="text-indigo-600 hover:text-indigo-800 font-medium text-sm flex items-center">
+                        <button
+                          onClick={() => setSelectedNomination(nomination)}
+                          className="text-indigo-600 hover:text-indigo-800 font-medium text-sm flex items-center"
+                        >
                           View Details
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -533,14 +738,16 @@ export default function VotingSessionPage() {
                                   className="w-10 h-10 rounded-full object-cover"
                                 />
                               ) : (
-                                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-10 h-10" />
+                                <div className="w-10 h-10">
+                                  <DefaultProfileIcon className="w-10 h-10" />
+                                </div>
                               )}
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-gray-900">
-                                  {voter?.FullName}
+                                  {voter?.FullName || "Unknown User"}
                                 </div>
                                 <div className="text-sm text-gray-500">
-                                  {voter?.Email}
+                                  {voter?.Email || "No email"}
                                 </div>
                               </div>
                             </div>
@@ -554,14 +761,16 @@ export default function VotingSessionPage() {
                                   className="w-10 h-10 rounded-full object-cover"
                                 />
                               ) : (
-                                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-10 h-10" />
+                                <div className="w-10 h-10">
+                                  <DefaultProfileIcon className="w-10 h-10" />
+                                </div>
                               )}
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-gray-900">
-                                  {nominee?.FullName}
+                                  {nominee?.FullName || "Unknown User"}
                                 </div>
                                 <div className="text-sm text-gray-500">
-                                  {nominee?.Email}
+                                  {nominee?.Email || "No email"}
                                 </div>
                               </div>
                             </div>
@@ -579,7 +788,8 @@ export default function VotingSessionPage() {
           </div>
 
           <div className="text-center text-white/80 text-sm mt-4">
-            Voting Session Manager • Last updated: {formatDate(new Date())}
+            Voting Session Manager • Last updated:{" "}
+            {formatDate(new Date().toISOString())}
           </div>
         </div>
       </div>

@@ -52,6 +52,36 @@ export default function BroadcastPage() {
   );
   const lastMessageIdRef = useRef(0);
 
+  const markAllBroadcastAsRead = useCallback(async () => {
+    try {
+      if (!user?.UserID) return;
+
+      const response = await fetch(
+        `https://myappapi-yo3p.onrender.com/api/Leader/notifications/allread/${user.UserID}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to mark as read");
+      }
+
+      const result = await response.json();
+      console.log(result.message);
+
+      // Optional: Refetch notifications or update state
+      console.log("All broadcast notifications marked as read");
+    } catch (err) {
+      console.error("Failed to mark notifications as read:", err);
+    }
+  }, [user]);
+
   const fetchMessages = useCallback(async () => {
     try {
       //setLoading(true);
@@ -103,24 +133,10 @@ export default function BroadcastPage() {
         }
       }
 
-      // Show notifications for new messages (only in active view)
-      if (viewingActiveMessages) {
-        const newMessages = formattedMessages.filter(
-          (msg) =>
-            msg.MessageID > lastMessageIdRef.current && !msg.isCurrentUser
-        );
-
-        newMessages.forEach((msg) => {
-          showNotification({
-            title: "New Broadcast Message",
-            content:
-              msg.Content.substring(0, 100) +
-              (msg.Content.length > 100 ? "..." : ""),
-            link: `/BroadCast#msg-${msg.MessageID}`,
-            createdAt: new Date(msg.SentAt),
-            type: "broadcast",
-          });
-        });
+      // After successfully loading messages
+      if (channelId === 1) {
+        // Add your broadcast channel ID check
+        await markAllBroadcastAsRead();
       }
 
       setMessages(formattedMessages);
@@ -130,7 +146,7 @@ export default function BroadcastPage() {
       setLoading(false);
       console.error("Message fetch error:", err);
     }
-  }, [channelId, user, viewingActiveMessages, showNotification]);
+  }, [channelId, user, viewingActiveMessages, markAllBroadcastAsRead]);
 
   // Check user role on load
   useEffect(() => {

@@ -496,12 +496,23 @@ export default function NotificationsClient() {
 
       {/* Notification Detail Modal */}
       {active && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          style={{
+            background: "rgba(0, 0, 0, 0.6)",
+            backdropFilter: "blur(8px)",
+          }}
+        >
           <div
             className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
+            <div
+              className=" px-6 py-4"
+              style={{
+                background: "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
+              }}
+            >
               <div className="flex justify-between items-center">
                 <div className="flex items-center">
                   <NotificationTypeIcon
@@ -545,7 +556,11 @@ export default function NotificationsClient() {
                     </button>
                   )}
                   <button
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+                    className="px-4 py-2 text-white rounded-lg hover:bg-indigo-700 transition"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
+                    }}
                     onClick={() => setActive(null)}
                   >
                     Close

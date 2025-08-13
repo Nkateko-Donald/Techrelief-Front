@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   X,
   AlertTriangle,
@@ -204,36 +204,46 @@ const MisuseDetailsModal: React.FC<MisuseDetailsModalProps> = ({
                         </div>
                       </div>
                     </div>
-
                     <div className="space-y-3">
                       <div className="flex items-start space-x-2">
                         <FileText className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                        <div className="flex-1">
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase">
                             Description
                           </p>
                           <p className="text-sm text-gray-900 mt-1">
-                            {misuse.Description || "No description provided"}
+                            {misuse.InitialDescription}
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        <div>
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                            Reported At
-                          </p>
-                          <p className="text-sm text-gray-900 mt-1">
-                            {misuse.CreatedAt
-                              ? new Date(misuse.CreatedAt).toLocaleString()
-                              : "Unknown"}
-                          </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-4 h-4 text-gray-400" />
+                          <div>
+                            <p className="text-xs font-medium text-gray-500 uppercase">
+                              Filed By
+                            </p>
+                            <p className="text-sm text-gray-900 mt-1">
+                              {misuse.Filers} ({misuse.FilerCount})
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          <Calendar className="w-4 h-4 text-gray-400" />
+                          <div>
+                            <p className="text-xs font-medium text-gray-500 uppercase">
+                              Reported
+                            </p>
+                            <p className="text-sm text-gray-900 mt-1">
+                              {new Date(misuse.CreatedAt).toLocaleString()}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
-
-                    {/* Progress indicator for status */}
+                    {/* Status progress bar */}
                     <div className="mt-4 pt-3 border-t border-gray-100">
                       <div className="flex justify-between text-xs text-gray-500 mb-1">
                         <span>Pending</span>
@@ -241,30 +251,24 @@ const MisuseDetailsModal: React.FC<MisuseDetailsModalProps> = ({
                         <span>Resolved</span>
                       </div>
                       <div className="flex space-x-1">
-                        <div
-                          className={`h-1 flex-1 rounded ${
-                            misuse.Status === "Pending" ||
-                            misuse.Status === "Reviewed" ||
-                            misuse.Status === "Resolved"
-                              ? "bg-red-400"
-                              : "bg-gray-200"
-                          }`}
-                        ></div>
-                        <div
-                          className={`h-1 flex-1 rounded ${
-                            misuse.Status === "Reviewed" ||
-                            misuse.Status === "Resolved"
-                              ? "bg-blue-400"
-                              : "bg-gray-200"
-                          }`}
-                        ></div>
-                        <div
-                          className={`h-1 flex-1 rounded ${
-                            misuse.Status === "Resolved"
-                              ? "bg-green-400"
-                              : "bg-gray-200"
-                          }`}
-                        ></div>
+                        {["Pending", "Reviewed", "Resolved"].map(
+                          (status, idx) => (
+                            <div
+                              key={status}
+                              className={`h-1 flex-1 rounded ${
+                                ["Pending", "Reviewed", "Resolved"].indexOf(
+                                  misuse.MisuseStatus
+                                ) >= idx
+                                  ? status === "Pending"
+                                    ? "bg-red-400"
+                                    : status === "Reviewed"
+                                    ? "bg-blue-400"
+                                    : "bg-green-400"
+                                  : "bg-gray-200"
+                              }`}
+                            ></div>
+                          )
+                        )}
                       </div>
                     </div>
                   </div>

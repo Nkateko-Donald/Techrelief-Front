@@ -11,6 +11,8 @@ export default function Analytics() {
   const typeRef = useRef<HTMLCanvasElement>(null);
   const respondersRef = useRef<HTMLCanvasElement>(null);
   const funnelRef = useRef<HTMLCanvasElement>(null);
+  const messagesRef = useRef<HTMLCanvasElement>(null);
+  const messagesChartRef = useRef<Chart | null>(null);
   const pathname = usePathname();
   const isAnalyticsPage = pathname === "/Analytics";
 
@@ -34,6 +36,7 @@ export default function Analytics() {
       falseReport: 0,
       escalated: 0,
     },
+    messages: { total: 0, unflagged: 0, flagged: 0 },
   });
 
   // Refs to store chart instances
@@ -109,14 +112,21 @@ export default function Analytics() {
     try {
       setLoading(true);
 
-      const [overviewRes, timeRes, typeRes, respondersRes, funnelRes] =
-        await Promise.all([
-          fetch(`${BASE}/api/analytics/overview?timeFrame=${timeFrame}`),
-          fetch(`${BASE}/api/analytics/time?timeFrame=${timeFrame}`),
-          fetch(`${BASE}/api/analytics/type`),
-          fetch(`${BASE}/api/analytics/top-responders?timeFrame=${timeFrame}`),
-          fetch(`${BASE}/api/analytics/funnel?timeFrame=${timeFrame}`),
-        ]);
+      const [
+        overviewRes,
+        timeRes,
+        typeRes,
+        respondersRes,
+        funnelRes,
+        messagesRes,
+      ] = await Promise.all([
+        fetch(`${BASE}/api/analytics/overview?timeFrame=${timeFrame}`),
+        fetch(`${BASE}/api/analytics/time?timeFrame=${timeFrame}`),
+        fetch(`${BASE}/api/analytics/type`),
+        fetch(`${BASE}/api/analytics/top-responders?timeFrame=${timeFrame}`),
+        fetch(`${BASE}/api/analytics/funnel?timeFrame=${timeFrame}`),
+        fetch(`${BASE}/api/analytics/messages?timeFrame=${timeFrame}`),
+      ]);
 
       // Parse responses with fallbacks
       const overviewData = overviewRes.ok
@@ -180,12 +190,18 @@ export default function Analytics() {
             escalated: 15,
           };
 
+      // Parse response
+      const messagesData = messagesRes.ok
+        ? await messagesRes.json()
+        : { total: 120, unflagged: 100, flagged: 20 };
+
       setChartData({
         overview: overviewData,
         time: timeData,
         type: typeData,
         responders: respondersData,
         funnel: funnelData,
+        messages: messagesData,
       });
     } catch (err) {
       console.error("Error fetching analytics:", err);
@@ -237,6 +253,7 @@ export default function Analytics() {
           falseReport: 8,
           escalated: 15,
         },
+        messages: { total: 120, unflagged: 100, flagged: 20 },
       });
     } finally {
       setLoading(false);
@@ -260,6 +277,7 @@ export default function Analytics() {
     if (typeChartRef.current) typeChartRef.current.destroy();
     if (respondersChartRef.current) respondersChartRef.current.destroy();
     if (funnelChartRef.current) funnelChartRef.current.destroy();
+    //if (messagesRef.current) messagesRef.current.destroy();
 
     const commonOptions = {
       responsive: true,
@@ -592,6 +610,48 @@ export default function Analytics() {
         renderHTMLLegend(funnelChartRef.current, "funnelLegend");
       }
     }
+
+    // Broadcast Messages Chart
+    if (messagesRef.current) {
+      const ctx = messagesRef.current.getContext("2d");
+      if (ctx) {
+        messagesChartRef.current = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: ["Total Messages", "Unflagged", "Flagged"],
+            datasets: [
+              {
+                data: [
+                  chartData.messages.total,
+                  chartData.messages.unflagged,
+                  chartData.messages.flagged,
+                ],
+                backgroundColor: [
+                  colorPalette.chart.blue,
+                  colorPalette.chart.green,
+                  colorPalette.chart.orange,
+                ],
+                borderColor: [
+                  colorPalette.chart.blue,
+                  colorPalette.chart.green,
+                  colorPalette.chart.orange,
+                ],
+                borderWidth: 2,
+                borderRadius: 8,
+              },
+            ],
+          },
+          options: {
+            ...commonOptions,
+            scales: {
+              y: { beginAtZero: true },
+              x: { grid: { display: false } },
+            },
+          },
+        });
+        renderHTMLLegend(messagesChartRef.current, "messagesLegend");
+      }
+    }
   };
 
   // 1. Fetch analytics data - only on analytics page
@@ -792,7 +852,6 @@ export default function Analytics() {
               </div>
             </div>
           </div>
-
           {/* Total Incidents Overview */}
           <div className="col-12">
             <div
@@ -834,7 +893,6 @@ export default function Analytics() {
               </div>
             </div>
           </div>
-
           {/* Reports Over Time & Reports by Type */}
           <div className="col-lg-6">
             <div
@@ -872,7 +930,6 @@ export default function Analytics() {
               </div>
             </div>
           </div>
-
           <div className="col-lg-6">
             <div
               className="card border-0 shadow-sm h-100"
@@ -912,7 +969,6 @@ export default function Analytics() {
               </div>
             </div>
           </div>
-
           {/* Top Responders & Request Lifecycle */}
           <div className="col-lg-6">
             <div
@@ -951,7 +1007,7 @@ export default function Analytics() {
               </div>
             </div>
           </div>
-
+          {/*Request Lifecycle card */}
           <div className="col-lg-6">
             <div
               className="card border-0 shadow-sm h-100"
@@ -989,6 +1045,45 @@ export default function Analytics() {
                 </div>
                 <div id="funnelLegend"></div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/*vs*/}
+        <div className="col-12">
+          <div
+            className="card border-0 shadow-sm"
+            style={{ borderRadius: "16px" }}
+          >
+            <div
+              className="card-header border-0 py-4"
+              style={{ background: "#f8f9fa" }}
+            >
+              <div className="d-flex align-items-center">
+                <div
+                  className="rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{
+                    width: "48px",
+                    height: "48px",
+                    background: colorPalette.gradients.info,
+                    color: "white",
+                  }}
+                >
+                  <i className="fas fa-bullhorn"></i>
+                </div>
+                <div>
+                  <h5 className="mb-1 fw-bold text-dark">Broadcast Messages</h5>
+                  <p className="mb-0 text-muted small">
+                    Channel message analytics and moderation status
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="card-body p-4">
+              <div style={{ height: "300px", position: "relative" }}>
+                <canvas ref={messagesRef}></canvas>
+              </div>
+              <div id="messagesLegend"></div>
             </div>
           </div>
         </div>

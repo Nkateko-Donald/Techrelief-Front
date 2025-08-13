@@ -214,7 +214,9 @@ export default function Header() {
                                   {notif.title}
                                 </span>
                                 <span className="block small text-muted">
-                                  {notif.content}
+                                  {notif.content.length > 38
+                                    ? notif.content.slice(0, 35) + "..."
+                                    : notif.content}
                                 </span>
                                 <span className="time">
                                   {formatDistanceToNow(notif.createdAt, {

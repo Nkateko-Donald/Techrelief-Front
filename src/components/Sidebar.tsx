@@ -301,23 +301,6 @@ export default function Sidebar() {
             </li>
 
             <li
-              className={`nav-item ${pathname === "/Votes" ? "active" : ""}`}
-              style={pathname === "/Votes" ? activeItemStyles : {}}
-            >
-              <Link
-                href="/Votes"
-                style={
-                  pathname === "/Votes"
-                    ? { ...linkStyles, ...activeLinkStyles }
-                    : linkStyles
-                }
-              >
-                <i className="fas fa-life-ring" style={iconStyles}></i>
-                <p>Voting Session</p>
-              </Link>
-            </li>
-
-            <li
               className={`nav-item ${
                 pathname === "/BroadCast" ? "active" : ""
               }`}
@@ -355,7 +338,24 @@ export default function Sidebar() {
               </Link>
             </li>
 
-            {/*<li
+            <li
+              className={`nav-item ${pathname === "/Votes" ? "active" : ""}`}
+              style={pathname === "/Votes" ? activeItemStyles : {}}
+            >
+              <Link
+                href="/Votes"
+                style={
+                  pathname === "/Votes"
+                    ? { ...linkStyles, ...activeLinkStyles }
+                    : linkStyles
+                }
+              >
+                <i className="fas fa-anchor" style={iconStyles}></i>
+                <p>Voting Session</p>
+              </Link>
+            </li>
+
+            <li
               className={`nav-item ${pathname === "/support" ? "active" : ""}`}
               style={pathname === "/support" ? activeItemStyles : {}}
             >
@@ -370,7 +370,7 @@ export default function Sidebar() {
                 <i className="fas fa-life-ring" style={iconStyles}></i>
                 <p>Support Desk</p>
               </Link>
-            </li>*/}
+            </li>
           </ul>
         </div>
       </div>
