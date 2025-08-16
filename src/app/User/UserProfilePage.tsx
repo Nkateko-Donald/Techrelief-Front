@@ -49,16 +49,19 @@ interface Report {
 
 const UserProfilePage = () => {
   const userID = 1;
-  
+
   const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [reports, setReports] = useState<Report[]>([]);
   const [reportsLoading, setReportsLoading] = useState(false);
   const [reportsError, setReportsError] = useState<string | null>(null);
-  const [sortConfig, setSortConfig] = useState<{ key: keyof Report; direction: 'asc' | 'desc' } | null>({
-    key: 'dateReported',
-    direction: 'desc'
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof Report;
+    direction: "asc" | "desc";
+  } | null>({
+    key: "dateReported",
+    direction: "desc",
   });
 
   useEffect(() => {
@@ -99,7 +102,7 @@ const UserProfilePage = () => {
         }
 
         setReports(data.reports || []);
-      } catch (err:any) {
+      } catch (err: any) {
         setReportsError(err.message || "An unexpected error occurred.");
       } finally {
         setReportsLoading(false);
@@ -110,71 +113,85 @@ const UserProfilePage = () => {
     fetchReports();
   }, [userID]);
 
-const getStatusBadge = (status: string) => {
-  const baseClasses =
-    "inline-flex items-center px-3 py-1 rounded-md text-xs font-semibold border";
+  const getStatusBadge = (status: string) => {
+    const baseClasses =
+      "inline-flex items-center px-3 py-1 rounded-md text-xs font-semibold border";
 
-  switch (status) {
-    case "Completed":
-      return (
-        <span className={`${baseClasses} bg-emerald-50 text-emerald-700 border-emerald-200`}>
-          <CheckCircle className="w-3 h-3 mr-1.5" />
-          Completed
-        </span>
-      );
+    switch (status) {
+      case "Completed":
+        return (
+          <span
+            className={`${baseClasses} bg-emerald-50 text-emerald-700 border-emerald-200`}
+          >
+            <CheckCircle className="w-3 h-3 mr-1.5" />
+            Completed
+          </span>
+        );
 
-    case "On-Going":
-      return (
-        <span className={`${baseClasses} bg-orange-50 text-orange-700 border-orange-200`}>
-          <Clock className="w-3 h-3 mr-1.5" />
-          In Progress
-        </span>
-      );
+      case "On-Going":
+        return (
+          <span
+            className={`${baseClasses} bg-orange-50 text-orange-700 border-orange-200`}
+          >
+            <Clock className="w-3 h-3 mr-1.5" />
+            In Progress
+          </span>
+        );
 
-    case "On-going":
-      return (
-        <span className={`${baseClasses} bg-orange-50 text-orange-700 border-orange-200`}>
-          <Clock className="w-3 h-3 mr-1.5" />
-          In Progress
-        </span>
-      );
+      case "On-going":
+        return (
+          <span
+            className={`${baseClasses} bg-orange-50 text-orange-700 border-orange-200`}
+          >
+            <Clock className="w-3 h-3 mr-1.5" />
+            In Progress
+          </span>
+        );
 
-    case "Abandoned":
-      return (
-        <span className={`${baseClasses} bg-rose-50 text-rose-700 border-rose-200`}>
-          <XCircle className="w-3 h-3 mr-1.5" />
-          Abandoned
-        </span>
-      );
+      case "Abandoned":
+        return (
+          <span
+            className={`${baseClasses} bg-rose-50 text-rose-700 border-rose-200`}
+          >
+            <XCircle className="w-3 h-3 mr-1.5" />
+            Abandoned
+          </span>
+        );
 
-    case "Escalated":
-      return (
-        <span className={`${baseClasses} bg-amber-50 text-amber-700 border-amber-200`}>
-          <AlertTriangle className="w-3 h-3 mr-1.5" />
-          Escalated
-        </span>
-      );
+      case "Escalated":
+        return (
+          <span
+            className={`${baseClasses} bg-amber-50 text-amber-700 border-amber-200`}
+          >
+            <AlertTriangle className="w-3 h-3 mr-1.5" />
+            Escalated
+          </span>
+        );
 
-    case "False report":
-      return (
-        <span className={`${baseClasses} bg-red-50 text-red-700 border-red-200`}>
-          <XCircle className="w-3 h-3 mr-1.5" />
-          False report
-        </span>
-      );
+      case "False report":
+        return (
+          <span
+            className={`${baseClasses} bg-red-50 text-red-700 border-red-200`}
+          >
+            <XCircle className="w-3 h-3 mr-1.5" />
+            False report
+          </span>
+        );
 
-    default:
-      return (
-        <span className={`${baseClasses} bg-slate-50 text-slate-700 border-slate-200`}>
-          {status}
-        </span>
-      );
-  }
-};
+      default:
+        return (
+          <span
+            className={`${baseClasses} bg-slate-50 text-slate-700 border-slate-200`}
+          >
+            {status}
+          </span>
+        );
+    }
+  };
 
   const sortedReports = [...reports].sort((a, b) => {
     if (!sortConfig) return 0;
-    
+
     let valA = a[sortConfig.key];
     let valB = b[sortConfig.key];
 
@@ -184,32 +201,42 @@ const getStatusBadge = (status: string) => {
     }
 
     if (valA < valB) {
-      return sortConfig.direction === 'asc' ? -1 : 1;
+      return sortConfig.direction === "asc" ? -1 : 1;
     }
     if (valA > valB) {
-      return sortConfig.direction === 'asc' ? 1 : -1;
+      return sortConfig.direction === "asc" ? 1 : -1;
     }
     return 0;
   });
 
   const requestSort = (key: keyof Report) => {
-    let direction: 'asc' | 'desc' = 'asc';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
+    let direction: "asc" | "desc" = "asc";
+    if (
+      sortConfig &&
+      sortConfig.key === key &&
+      sortConfig.direction === "asc"
+    ) {
+      direction = "desc";
     }
     setSortConfig({ key, direction });
   };
 
   const getSortIcon = (key: keyof Report) => {
     if (!sortConfig || sortConfig.key !== key) {
-      return <span className="opacity-30"><ChevronUp className="w-3 h-3 inline" /></span>;
+      return (
+        <span className="opacity-30">
+          <ChevronUp className="w-3 h-3 inline" />
+        </span>
+      );
     }
-    return sortConfig.direction === 'asc' ? 
-      <ChevronUp className="w-3 h-3 inline" /> : 
-      <ChevronDown className="w-3 h-3 inline" />;
+    return sortConfig.direction === "asc" ? (
+      <ChevronUp className="w-3 h-3 inline" />
+    ) : (
+      <ChevronDown className="w-3 h-3 inline" />
+    );
   };
 
-  const getPriorityLevel = (type:any) => {
+  const getPriorityLevel = (type: any) => {
     switch (type) {
       case "Fire":
         return { color: "bg-red-500", level: "Critical" };
@@ -223,12 +250,29 @@ const getStatusBadge = (status: string) => {
   };
 
   const getReportStats = () => {
-    const completed = reports.filter(r => r.Report_Status === "Completed").length;
-    const ongoing = reports.filter(r => r.Report_Status === "On-Going").length;
-    const Abondoned = reports.filter(r => r.Report_Status === "Abondoned").length;
-    const False = reports.filter(r => r.Report_Status === "False report").length;
-    const escalate = reports.filter(r => r.Report_Status === "Escalated").length;
-    return { completed, ongoing, Abondoned,False, escalate, total: reports.length };
+    const completed = reports.filter(
+      (r) => r.Report_Status === "Completed"
+    ).length;
+    const ongoing = reports.filter(
+      (r) => r.Report_Status === "On-Going"
+    ).length;
+    const Abondoned = reports.filter(
+      (r) => r.Report_Status === "Abondoned"
+    ).length;
+    const False = reports.filter(
+      (r) => r.Report_Status === "False report"
+    ).length;
+    const escalate = reports.filter(
+      (r) => r.Report_Status === "Escalated"
+    ).length;
+    return {
+      completed,
+      ongoing,
+      Abondoned,
+      False,
+      escalate,
+      total: reports.length,
+    };
   };
 
   if (error) {
@@ -239,7 +283,9 @@ const getStatusBadge = (status: string) => {
             <div className="mx-auto flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mb-4">
               <AlertCircle className="w-6 h-6 text-red-600" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">Unable to Load Profile</h3>
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">
+              Unable to Load Profile
+            </h3>
             <p className="text-sm text-slate-600 mb-6">{error}</p>
             <button
               onClick={() => window.history.back()}
@@ -258,7 +304,9 @@ const getStatusBadge = (status: string) => {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8 text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900 mx-auto mb-4"></div>
-          <p className="text-sm text-slate-600 font-medium">Loading user profile...</p>
+          <p className="text-sm text-slate-600 font-medium">
+            Loading user profile...
+          </p>
         </div>
       </div>
     );
@@ -281,8 +329,12 @@ const getStatusBadge = (status: string) => {
                 Back to Dashboard
               </button>
               <div className="border-l border-slate-300 pl-4">
-                <h1 className="text-xl font-semibold text-slate-900">User Profile Management</h1>
-                <p className="text-sm text-slate-500 mt-0.5">Comprehensive user account overview</p>
+                <h1 className="text-xl font-semibold text-slate-900">
+                  User Profile Management
+                </h1>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  Comprehensive user account overview
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
@@ -299,20 +351,20 @@ const getStatusBadge = (status: string) => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          
           {/* User Profile Card */}
           <div className="lg:col-span-1">
             <div className="bg-white shadow-sm rounded-lg border border-slate-200">
-              
               {/* Profile Header */}
               <div className="px-6 py-6 border-b border-slate-200">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-slate-900">Profile Information</h2>
+                  <h2 className="text-lg font-semibold text-slate-900">
+                    Profile Information
+                  </h2>
                   <button className="p-1 text-slate-400 hover:text-slate-600">
                     <Edit className="w-4 h-4" />
                   </button>
                 </div>
-                
+
                 <div className="text-center">
                   <div className="relative inline-block">
                     <div className="w-16 h-16 bg-slate-600 rounded-full flex items-center justify-center text-white text-lg font-semibold">
@@ -323,17 +375,22 @@ const getStatusBadge = (status: string) => {
                           className="w-full h-full object-cover rounded-full"
                         />
                       ) : (
-                        user.FullName.split(" ").map(n => n[0]).join("").toUpperCase()
+                        user.FullName.split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase()
                       )}
                     </div>
                     <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-400 border-2 border-white rounded-full"></div>
                   </div>
-                  
+
                   <div className="mt-4">
-                    <h3 className="text-lg font-semibold text-slate-900">{user.FullName}</h3>
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      {user.FullName}
+                    </h3>
                     <p className="text-sm text-slate-500">@{user.Username}</p>
                   </div>
-                  
+
                   <div className="mt-3">
                     <span className="inline-flex items-center px-3 py-1 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
                       <Shield className="w-3 h-3 mr-1" />
@@ -345,23 +402,30 @@ const getStatusBadge = (status: string) => {
 
               {/* Contact Information */}
               <div className="px-6 py-4">
-                <h4 className="text-sm font-semibold text-slate-900 mb-3">Contact Details</h4>
+                <h4 className="text-sm font-semibold text-slate-900 mb-3">
+                  Contact Details
+                </h4>
                 <div className="space-y-3">
                   <div className="flex items-center text-sm">
                     <Mail className="w-4 h-4 text-slate-400 mr-3 flex-shrink-0" />
-                    <span className="text-slate-600 break-all">{user.Email}</span>
+                    <span className="text-slate-600 break-all">
+                      {user.Email}
+                    </span>
                   </div>
                   <div className="flex items-center text-sm">
                     <Phone className="w-4 h-4 text-slate-400 mr-3 flex-shrink-0" />
-                    <span className="text-slate-600">{user.PhoneNumber || "Not provided"}</span>
+                    <span className="text-slate-600">
+                      {user.PhoneNumber || "Not provided"}
+                    </span>
                   </div>
                   <div className="flex items-center text-sm">
                     <Calendar className="w-4 h-4 text-slate-400 mr-3 flex-shrink-0" />
                     <span className="text-slate-600">
-                      Member since {new Date(user.CreatedAt).toLocaleDateString('en-US', {
-                        month: 'long',
-                        day: 'numeric',
-                        year: 'numeric'
+                      Member since{" "}
+                      {new Date(user.CreatedAt).toLocaleDateString("en-US", {
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
                       })}
                     </span>
                   </div>
@@ -372,48 +436,66 @@ const getStatusBadge = (status: string) => {
             {/* Statistics Overview */}
             <div className="bg-white shadow-sm rounded-lg border border-slate-200 mt-6">
               <div className="px-6 py-4 border-b border-slate-200">
-                <h3 className="text-sm font-semibold text-slate-900">Activity Overview</h3>
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Activity Overview
+                </h3>
               </div>
               <div className="px-6 py-4">
                 <dl className="space-y-3">
                   <div className="flex justify-between items-center">
                     <dt className="text-sm text-slate-500">Total Reports</dt>
-                    <dd className="text-sm font-semibold text-slate-900">{stats.total}</dd>
+                    <dd className="text-sm font-semibold text-slate-900">
+                      {stats.total}
+                    </dd>
                   </div>
                   <div className="flex justify-between items-center">
                     <dt className="text-sm text-slate-500">Completed</dt>
-                    <dd className="text-sm font-semibold text-emerald-600">{stats.completed}</dd>
+                    <dd className="text-sm font-semibold text-emerald-600">
+                      {stats.completed}
+                    </dd>
                   </div>
                   <div className="flex justify-between items-center">
                     <dt className="text-sm text-slate-500">In Progress</dt>
-                    <dd className="text-sm font-semibold text-orange-600">{stats.ongoing}</dd>
+                    <dd className="text-sm font-semibold text-orange-600">
+                      {stats.ongoing}
+                    </dd>
                   </div>
                   <div className="flex justify-between items-center">
                     <dt className="text-sm text-slate-500">Abondoned</dt>
-                    <dd className="text-sm font-semibold text-rose-500">{stats.Abondoned}</dd>
+                    <dd className="text-sm font-semibold text-rose-500">
+                      {stats.Abondoned}
+                    </dd>
                   </div>
-                    <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center">
                     <dt className="text-sm text-slate-500">Escalated</dt>
-                    <dd className="text-sm font-semibold text-amber-600">{stats.escalate}</dd>
+                    <dd className="text-sm font-semibold text-amber-600">
+                      {stats.escalate}
+                    </dd>
                   </div>
                   <div className="flex justify-between items-center">
                     <dt className="text-sm text-slate-500">False Report</dt>
-                    <dd className="text-sm font-semibold text-red-500">{stats.False}</dd>
+                    <dd className="text-sm font-semibold text-red-500">
+                      {stats.False}
+                    </dd>
                   </div>
-
                 </dl>
-                
+
                 {stats.total > 0 && (
                   <div className="mt-4 pt-4 border-t border-slate-200">
-                    <div className="text-xs text-slate-500 mb-2">Completion Rate</div>
+                    <div className="text-xs text-slate-500 mb-2">
+                      Completion Rate
+                    </div>
                     <div className="w-full bg-slate-200 rounded-full h-2">
-                      <div 
-                        className="bg-emerald-500 h-2 rounded-full" 
-                        style={{ width: `${(stats.completed / stats.total) * 100}%` }}
+                      <div
+                        className="bg-emerald-500 h-2 rounded-full"
+                        style={{
+                          width: `${(stats.completed / stats.total) * 100}%`,
+                        }}
                       ></div>
                     </div>
                     <div className="text-xs text-slate-600 mt-1">
-                      {Math.round((stats.completed / stats.total) * 100)}% Complete
+                      {Math.round((stats.completed / stats.total) * 100)}%
+                      Complete
                     </div>
                   </div>
                 )}
@@ -424,7 +506,6 @@ const getStatusBadge = (status: string) => {
           {/* Reports Section */}
           <div className="lg:col-span-3">
             <div className="bg-white shadow-sm rounded-lg border border-slate-200">
-              
               {/* Reports Header */}
               <div className="px-6 py-4 border-b border-slate-200">
                 <div className="flex items-center justify-between">
@@ -434,7 +515,9 @@ const getStatusBadge = (status: string) => {
                       Incident Reports
                     </h2>
                     <p className="text-sm text-slate-500 mt-1">
-                      {reports.length} {reports.length === 1 ? 'report' : 'reports'} submitted by this user
+                      {reports.length}{" "}
+                      {reports.length === 1 ? "report" : "reports"} submitted by
+                      this user
                     </p>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -454,7 +537,9 @@ const getStatusBadge = (status: string) => {
                 {reportsLoading && (
                   <div className="text-center py-12">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900 mx-auto mb-4"></div>
-                    <p className="text-sm text-slate-600">Loading incident reports...</p>
+                    <p className="text-sm text-slate-600">
+                      Loading incident reports...
+                    </p>
                   </div>
                 )}
 
@@ -463,7 +548,9 @@ const getStatusBadge = (status: string) => {
                     <div className="mx-auto flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mb-4">
                       <AlertCircle className="w-6 h-6 text-red-600" />
                     </div>
-                    <h3 className="text-sm font-medium text-slate-900 mb-2">Unable to Load Reports</h3>
+                    <h3 className="text-sm font-medium text-slate-900 mb-2">
+                      Unable to Load Reports
+                    </h3>
                     <p className="text-sm text-slate-600">{reportsError}</p>
                   </div>
                 )}
@@ -471,8 +558,12 @@ const getStatusBadge = (status: string) => {
                 {reports.length === 0 && !reportsLoading && (
                   <div className="text-center py-12">
                     <FileText className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-                    <h3 className="text-sm font-medium text-slate-900 mb-2">No Reports Found</h3>
-                    <p className="text-sm text-slate-500">This user has not submitted any incident reports.</p>
+                    <h3 className="text-sm font-medium text-slate-900 mb-2">
+                      No Reports Found
+                    </h3>
+                    <p className="text-sm text-slate-500">
+                      This user has not submitted any incident reports.
+                    </p>
                   </div>
                 )}
 
@@ -485,12 +576,12 @@ const getStatusBadge = (status: string) => {
                           <th
                             scope="col"
                             className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer"
-                            onClick={() => requestSort('ReportID')}
+                            onClick={() => requestSort("ReportID")}
                           >
                             <div className="flex items-center">
                               Report ID
                               <span className="ml-1">
-                                {getSortIcon('ReportID')}
+                                {getSortIcon("ReportID")}
                               </span>
                             </div>
                           </th>
@@ -515,12 +606,12 @@ const getStatusBadge = (status: string) => {
                           <th
                             scope="col"
                             className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer"
-                            onClick={() => requestSort('dateReported')}
+                            onClick={() => requestSort("dateReported")}
                           >
                             <div className="flex items-center">
                               Date Submitted
                               <span className="ml-1">
-                                {getSortIcon('dateReported')}
+                                {getSortIcon("dateReported")}
                               </span>
                             </div>
                           </th>
@@ -528,15 +619,22 @@ const getStatusBadge = (status: string) => {
                       </thead>
                       <tbody className="bg-white divide-y divide-slate-200">
                         {sortedReports.map((report) => {
-                          const priority = getPriorityLevel(report.EmergencyType);
+                          const priority = getPriorityLevel(
+                            report.EmergencyType
+                          );
                           return (
-                            <tr key={report.ReportID} className="hover:bg-slate-50">
+                            <tr
+                              key={report.ReportID}
+                              className="hover:bg-slate-50"
+                            >
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                                 {report.ReportID}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="flex items-center">
-                                  <div className={`flex-shrink-0 w-2 h-2 rounded-full ${priority.color} mr-3`}></div>
+                                  <div
+                                    className={`flex-shrink-0 w-2 h-2 rounded-full ${priority.color} mr-3`}
+                                  ></div>
                                   <div>
                                     <div className="text-sm font-medium text-slate-900">
                                       {report.EmergencyType}
@@ -559,16 +657,20 @@ const getStatusBadge = (status: string) => {
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="text-sm text-slate-600 flex items-center">
                                   <Clock className="w-4 h-4 text-slate-400 mr-1.5" />
-                                  {new Date(report.dateReported).toLocaleDateString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    year: 'numeric'
+                                  {new Date(
+                                    report.dateReported
+                                  ).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
                                   })}
                                 </div>
                                 <div className="text-xs text-slate-500">
-                                  {new Date(report.dateReported).toLocaleTimeString('en-US', {
-                                    hour: '2-digit',
-                                    minute: '2-digit'
+                                  {new Date(
+                                    report.dateReported
+                                  ).toLocaleTimeString("en-US", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
                                   })}
                                 </div>
                               </td>

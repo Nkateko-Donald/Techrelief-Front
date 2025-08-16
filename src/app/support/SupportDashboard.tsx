@@ -327,21 +327,29 @@ const SupportDashboard = () => {
       </div>
     );
   }
-
+  {
+    /*background: "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)", */
+  }
   return (
     <div className="page-inner">
       <div
         className="d-flex justify-content-center align-items-center"
         style={{
           borderRadius: "12px",
-          background: "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
+
           padding: "1rem",
         }}
       >
         <div>
           <main className="flex-1 p-6">
             <div className="max-w-7xl mx-auto">
-              <div className="mb-8">
+              <div
+                className="mb-8 bg-white rounded-xl shadow p-6"
+                style={{
+                  background:
+                    "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
+                }}
+              >
                 <h1 className="text-3xl font-bold text-white">
                   Support Dashboard
                 </h1>

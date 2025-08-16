@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import React, { Suspense, useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -87,7 +87,6 @@ async function getAddressFromCoords(
   }
 }
 
-
 interface Report {
   ReportID: number;
   EmergencyType: string;
@@ -110,7 +109,13 @@ interface Reporter {
   ProfilePhoto: string | null;
 }
 
-function AudioPlayer({ base64String, index }: { base64String: string; index: number }) {
+function AudioPlayer({
+  base64String,
+  index,
+}: {
+  base64String: string;
+  index: number;
+}) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -202,16 +207,18 @@ function AudioPlayer({ base64String, index }: { base64String: string; index: num
             <Mic className="w-4 h-4 text-purple-600" />
           </div>
           <div>
-            <p className="font-medium text-slate-900">Voice Recording {index + 1}</p>
+            <p className="font-medium text-slate-900">
+              Voice Recording {index + 1}
+            </p>
             <p className="text-sm text-slate-500">Emergency audio evidence</p>
           </div>
         </div>
         <button
           onClick={isPlaying ? handlePause : handlePlay}
           className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${
-            isPlaying 
-              ? 'bg-red-600 hover:bg-red-700 text-white' 
-              : 'bg-purple-600 hover:bg-purple-700 text-white'
+            isPlaying
+              ? "bg-red-600 hover:bg-red-700 text-white"
+              : "bg-purple-600 hover:bg-purple-700 text-white"
           }`}
           disabled={!localAudioUrl}
         >
@@ -291,7 +298,7 @@ function LocationDisplay({ location }: { location: string }) {
 
     parseAndResolveLocation();
   }, [location]);
-  
+
   const openInMaps = () => {
     if (coordinates) {
       const mapsUrl = `https://www.google.com/maps?q=${coordinates.lat},${coordinates.lng}`;
@@ -314,11 +321,15 @@ function LocationDisplay({ location }: { location: string }) {
           ) : error ? (
             <div>
               <p className="text-red-600 text-sm mb-1">{error}</p>
-              <p className="text-slate-500 text-sm">Raw coordinates: {location}</p>
+              <p className="text-slate-500 text-sm">
+                Raw coordinates: {location}
+              </p>
             </div>
           ) : resolvedAddress ? (
             <div>
-              <p className="text-slate-900 font-medium leading-relaxed">{resolvedAddress}</p>
+              <p className="text-slate-900 font-medium leading-relaxed">
+                {resolvedAddress}
+              </p>
             </div>
           ) : (
             <p className="text-slate-600">No address available</p>
@@ -388,7 +399,9 @@ function ReportContent() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
-          <p className="text-slate-600 font-medium">Loading emergency report...</p>
+          <p className="text-slate-600 font-medium">
+            Loading emergency report...
+          </p>
         </div>
       </div>
     );
@@ -446,53 +459,95 @@ function ReportContent() {
   };
 
   const emergencyTypeConfig = {
-    Fire: { color: "text-red-600", bgColor: "bg-red-50", icon: "🔥", urgency: "Critical" },
-    Accident: { color: "text-orange-600", bgColor: "bg-orange-50", icon: "🚗", urgency: "High" },
-    Medical: { color: "text-pink-600", bgColor: "bg-pink-50", icon: "🏥", urgency: "Critical" },
-    Theft: { color: "text-purple-600", bgColor: "bg-purple-50", icon: "🚨", urgency: "Medium" },
-    Other: { color: "text-slate-600", bgColor: "bg-slate-50", icon: "⚠️", urgency: "Low" },
+    Fire: {
+      color: "text-red-600",
+      bgColor: "bg-red-50",
+      icon: "🔥",
+      urgency: "Critical",
+    },
+    Accident: {
+      color: "text-orange-600",
+      bgColor: "bg-orange-50",
+      icon: "🚗",
+      urgency: "High",
+    },
+    Medical: {
+      color: "text-pink-600",
+      bgColor: "bg-pink-50",
+      icon: "🏥",
+      urgency: "Critical",
+    },
+    Theft: {
+      color: "text-purple-600",
+      bgColor: "bg-purple-50",
+      icon: "🚨",
+      urgency: "Medium",
+    },
+    Other: {
+      color: "text-slate-600",
+      bgColor: "bg-slate-50",
+      icon: "⚠️",
+      urgency: "Low",
+    },
   };
 
   const status = report.Report_Status;
-  const emergencyConfig = emergencyTypeConfig[report.EmergencyType as keyof typeof emergencyTypeConfig] || emergencyTypeConfig.Other;
+  const emergencyConfig =
+    emergencyTypeConfig[
+      report.EmergencyType as keyof typeof emergencyTypeConfig
+    ] || emergencyTypeConfig.Other;
   const createdAt = report.Report_CreatedAt || new Date().toISOString();
-  const timeAgo = Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60));
+  const timeAgo = Math.floor(
+    (Date.now() - new Date(createdAt).getTime()) / (1000 * 60)
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100">
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        
         {/* Header Section */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-4 px-4 py-2 bg-white rounded-full shadow-sm border border-slate-200">
             <Shield className="w-5 h-5 text-blue-600" />
-            <span className="text-sm font-medium text-slate-700">Emergency Response System</span>
+            <span className="text-sm font-medium text-slate-700">
+              Emergency Response System
+            </span>
           </div>
           <h1 className="text-4xl font-bold text-slate-900 mb-2">
             Emergency Report #{report.ReportID}
           </h1>
           <p className="text-slate-600 max-w-2xl mx-auto">
-            Detailed information and evidence for the reported emergency situation
+            Detailed information and evidence for the reported emergency
+            situation
           </p>
         </div>
 
         {/* Status Alert Bar */}
-        <div className={`mb-8 p-4 rounded-xl border-l-4 ${
-          status === 'Pending' ? 'bg-amber-50 border-amber-400' : 
-          status === 'In Progress' ? 'bg-blue-50 border-blue-400' : 
-          'bg-emerald-50 border-emerald-400'
-        }`}>
+        <div
+          className={`mb-8 p-4 rounded-xl border-l-4 ${
+            status === "Pending"
+              ? "bg-amber-50 border-amber-400"
+              : status === "In Progress"
+              ? "bg-blue-50 border-blue-400"
+              : "bg-emerald-50 border-emerald-400"
+          }`}
+        >
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
               {statusConfig[status as keyof typeof statusConfig]?.icon}
               <div>
-                <p className={`font-semibold ${statusConfig[status as keyof typeof statusConfig]?.color}`}>
+                <p
+                  className={`font-semibold ${
+                    statusConfig[status as keyof typeof statusConfig]?.color
+                  }`}
+                >
                   Status: {status}
                 </p>
                 <p className="text-sm text-slate-600">
-                  {status === 'Pending' ? 'Awaiting emergency response' : 
-                   status === 'In Progress' ? 'Emergency services are responding' : 
-                   'Emergency has been resolved'}
+                  {status === "Pending"
+                    ? "Awaiting emergency response"
+                    : status === "In Progress"
+                    ? "Emergency services are responding"
+                    : "Emergency has been resolved"}
                 </p>
               </div>
             </div>
@@ -510,28 +565,38 @@ function ReportContent() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
           {/* Main Content - Left Column */}
           <div className="lg:col-span-2 space-y-6">
-            
             {/* Emergency Details Card */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-lg ${emergencyConfig.bgColor}`}>
-                    <AlertCircle className={`w-5 h-5 ${emergencyConfig.color}`} />
+                    <AlertCircle
+                      className={`w-5 h-5 ${emergencyConfig.color}`}
+                    />
                   </div>
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-900">Emergency Details</h2>
-                    <p className="text-slate-600 text-sm">Critical incident information</p>
+                    <h2 className="text-xl font-semibold text-slate-900">
+                      Emergency Details
+                    </h2>
+                    <p className="text-slate-600 text-sm">
+                      Critical incident information
+                    </p>
                   </div>
                 </div>
               </div>
-              
+
               <div className="p-6 space-y-6">
                 {/* Emergency Type & Urgency */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className={`p-4 rounded-lg border ${emergencyConfig.bgColor} ${emergencyConfig.color.replace('text-', 'border-').replace('600', '200')}`}>
+                  <div
+                    className={`p-4 rounded-lg border ${
+                      emergencyConfig.bgColor
+                    } ${emergencyConfig.color
+                      .replace("text-", "border-")
+                      .replace("600", "200")}`}
+                  >
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-2xl">{emergencyConfig.icon}</span>
                       <h3 className="font-semibold">Emergency Type</h3>
@@ -541,13 +606,21 @@ function ReportContent() {
                   <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
                     <div className="flex items-center gap-2 mb-2">
                       <AlertTriangle className="w-5 h-5 text-slate-600" />
-                      <h3 className="font-semibold text-slate-700">Urgency Level</h3>
+                      <h3 className="font-semibold text-slate-700">
+                        Urgency Level
+                      </h3>
                     </div>
-                    <p className={`text-lg font-bold ${
-                      emergencyConfig.urgency === 'Critical' ? 'text-red-600' :
-                      emergencyConfig.urgency === 'High' ? 'text-orange-600' :
-                      emergencyConfig.urgency === 'Medium' ? 'text-amber-600' : 'text-emerald-600'
-                    }`}>
+                    <p
+                      className={`text-lg font-bold ${
+                        emergencyConfig.urgency === "Critical"
+                          ? "text-red-600"
+                          : emergencyConfig.urgency === "High"
+                          ? "text-orange-600"
+                          : emergencyConfig.urgency === "Medium"
+                          ? "text-amber-600"
+                          : "text-emerald-600"
+                      }`}
+                    >
                       {emergencyConfig.urgency}
                     </p>
                   </div>
@@ -557,7 +630,9 @@ function ReportContent() {
                 <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
                   <div className="flex items-center gap-2 mb-2">
                     <Calendar className="w-5 h-5 text-slate-600" />
-                    <h3 className="font-semibold text-slate-700">Time Reported</h3>
+                    <h3 className="font-semibold text-slate-700">
+                      Time Reported
+                    </h3>
                   </div>
                   <p className="text-slate-900 font-medium">
                     {formatDistanceToNowStrict(new Date(createdAt), {
@@ -571,7 +646,9 @@ function ReportContent() {
 
                 {/* Description */}
                 <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                  <h3 className="font-semibold text-slate-700 mb-3">Incident Description</h3>
+                  <h3 className="font-semibold text-slate-700 mb-3">
+                    Incident Description
+                  </h3>
                   <p className="text-slate-800 leading-relaxed whitespace-pre-line">
                     {report.EmerDescription}
                   </p>
@@ -579,16 +656,23 @@ function ReportContent() {
 
                 {/* Location */}
                 <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                  <h3 className="font-semibold text-slate-700 mb-4">Location</h3>
+                  <h3 className="font-semibold text-slate-700 mb-4">
+                    Location
+                  </h3>
                   <LocationDisplay location={report.Report_Location} />
                 </div>
 
                 {/* Shared With */}
                 <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                  <h3 className="font-semibold text-slate-700 mb-3">Notified Authorities</h3>
+                  <h3 className="font-semibold text-slate-700 mb-3">
+                    Notified Authorities
+                  </h3>
                   <div className="flex flex-wrap gap-2">
-                    {report.SharedWith.split(', ').map((authority, idx) => (
-                      <span key={idx} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                    {report.SharedWith.split(", ").map((authority, idx) => (
+                      <span
+                        key={idx}
+                        className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
+                      >
                         {authority}
                       </span>
                     ))}
@@ -605,12 +689,16 @@ function ReportContent() {
                     <Camera className="w-5 h-5 text-indigo-600" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-900">Evidence & Media</h2>
-                    <p className="text-slate-600 text-sm">Visual and audio documentation</p>
+                    <h2 className="text-xl font-semibold text-slate-900">
+                      Evidence & Media
+                    </h2>
+                    <p className="text-slate-600 text-sm">
+                      Visual and audio documentation
+                    </p>
                   </div>
                 </div>
               </div>
-              
+
               <div className="p-6 space-y-6">
                 {/* Photo Evidence */}
                 {report.MediaPhoto && (
@@ -623,7 +711,10 @@ function ReportContent() {
                       {report.MediaPhoto.split(";")
                         .filter(Boolean)
                         .map((img, idx) => (
-                          <div key={idx} className="relative group overflow-hidden rounded-lg border border-slate-200 shadow-sm">
+                          <div
+                            key={idx}
+                            className="relative group overflow-hidden rounded-lg border border-slate-200 shadow-sm"
+                          >
                             <Image
                               src={`data:image/jpeg;base64,${img}`}
                               alt={`Emergency photo ${idx + 1}`}
@@ -649,7 +740,11 @@ function ReportContent() {
                       {report.MediaVoice.split(";")
                         .filter(Boolean)
                         .map((audio, idx) => (
-                          <AudioPlayer key={idx} base64String={audio} index={idx} />
+                          <AudioPlayer
+                            key={idx}
+                            base64String={audio}
+                            index={idx}
+                          />
                         ))}
                     </div>
                   </div>
@@ -660,11 +755,12 @@ function ReportContent() {
 
           {/* Sidebar - Right Column */}
           <div className="space-y-6">
-            
             {/* Quick Actions Card */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
-                <h2 className="text-lg font-semibold text-slate-900">Quick Actions</h2>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Quick Actions
+                </h2>
               </div>
               <div className="p-4 space-y-3">
                 <a
@@ -688,9 +784,11 @@ function ReportContent() {
             {/* Reporter Information Card */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
-                <h2 className="text-lg font-semibold text-slate-900">Reporter Information</h2>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Reporter Information
+                </h2>
               </div>
-              
+
               <div className="p-6">
                 <div className="flex items-start gap-4 mb-6">
                   {reporter.ProfilePhoto ? (
@@ -712,27 +810,33 @@ function ReportContent() {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-slate-900 text-lg">{reporter.FullName}</h3>
+                    <h3 className="font-semibold text-slate-900 text-lg">
+                      {reporter.FullName}
+                    </h3>
                     <p className="text-slate-600">@{reporter.Username}</p>
                     <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full mt-2">
                       {reporter.UserType}
                     </span>
                   </div>
                 </div>
-                
+
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
                     <Phone className="w-5 h-5 text-slate-500 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-slate-600">Phone</p>
-                      <p className="font-medium text-slate-900">{reporter.PhoneNumber}</p>
+                      <p className="font-medium text-slate-900">
+                        {reporter.PhoneNumber}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
                     <Mail className="w-5 h-5 text-slate-500 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-slate-600">Email</p>
-                      <p className="font-medium text-slate-900 truncate">{reporter.Email}</p>
+                      <p className="font-medium text-slate-900 truncate">
+                        {reporter.Email}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -742,7 +846,9 @@ function ReportContent() {
             {/* Timeline Card */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
-                <h2 className="text-lg font-semibold text-slate-900">Timeline</h2>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Timeline
+                </h2>
               </div>
               <div className="p-4">
                 <div className="space-y-4">
@@ -751,7 +857,9 @@ function ReportContent() {
                       <AlertTriangle className="w-3 h-3 text-red-600" />
                     </div>
                     <div>
-                      <p className="font-medium text-slate-900 text-sm">Report Created</p>
+                      <p className="font-medium text-slate-900 text-sm">
+                        Report Created
+                      </p>
                       <p className="text-slate-600 text-xs">
                         {formatDistanceToNowStrict(new Date(createdAt), {
                           addSuffix: true,
@@ -764,11 +872,18 @@ function ReportContent() {
                       <Clock className="w-3 h-3 text-amber-600" />
                     </div>
                     <div>
-                      <p className="font-medium text-slate-900 text-sm">Authorities Notified</p>
+                      <p className="font-medium text-slate-900 text-sm">
+                        Authorities Notified
+                      </p>
                       <p className="text-slate-600 text-xs">
-                        {formatDistanceToNowStrict(new Date(new Date(createdAt).getTime() + 2 * 60 * 1000), {
-                          addSuffix: true,
-                        })}
+                        {formatDistanceToNowStrict(
+                          new Date(
+                            new Date(createdAt).getTime() + 2 * 60 * 1000
+                          ),
+                          {
+                            addSuffix: true,
+                          }
+                        )}
                       </p>
                     </div>
                   </div>
@@ -777,7 +892,9 @@ function ReportContent() {
                       <Shield className="w-3 h-3 text-blue-600" />
                     </div>
                     <div>
-                      <p className="font-medium text-slate-900 text-sm">Response Team Assigned</p>
+                      <p className="font-medium text-slate-900 text-sm">
+                        Response Team Assigned
+                      </p>
                       <p className="text-slate-600 text-xs">Awaiting update</p>
                     </div>
                   </div>
@@ -791,7 +908,9 @@ function ReportContent() {
                 <div className="p-2 bg-red-100 rounded-full">
                   <AlertTriangle className="w-5 h-5 text-red-600" />
                 </div>
-                <h3 className="font-semibold text-red-900">High Priority Alert</h3>
+                <h3 className="font-semibold text-red-900">
+                  High Priority Alert
+                </h3>
               </div>
               <p className="text-red-800 text-sm mb-4">
                 This emergency requires immediate attention from response teams.
@@ -824,14 +943,17 @@ function ReportContent() {
       </div>
     </div>
   );
-}export default function ReportPage() {
+}
+export default function ReportPage() {
   return (
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
           <div className="flex flex-col items-center gap-4">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
-            <p className="text-slate-600 font-medium">Loading emergency report...</p>
+            <p className="text-slate-600 font-medium">
+              Loading emergency report...
+            </p>
           </div>
         </div>
       }
