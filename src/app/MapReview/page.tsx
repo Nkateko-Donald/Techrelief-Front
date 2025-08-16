@@ -47,11 +47,11 @@ const reportTypes = [
 ];
 
 const statusColors = {
-  Completed: "#10b981",
-  Escalated: "#f59e0b",
+  "Completed": "#10b981",
+  "Escalated": "#f59e0b",
   "False report": "#ef4444",
   "On-Going": "#3b82f6",
-  Abandoned: "#9caa1dff",
+  "Abandoned": "#9caa1dff",
 };
 
 export default function CrimeHeatmapPage() {
@@ -129,28 +129,25 @@ export default function CrimeHeatmapPage() {
             }
             pivot[suburb][status] = row.report_count;
           });
-
+          
           const statusDataArray = Object.values(pivot);
           setStatusData(statusDataArray);
 
           // Create suburb counts from status data
-          const suburbCountsArray: SuburbCount[] = statusDataArray
-            .map((item: any) => {
-              const totalCount =
-                (item.Completed || 0) +
-                (item.Escalated || 0) +
-                (item["False report"] || 0) +
-                (item["On-Going"] || 0) +
-                (item.Abandoned || 0);
-
-              return {
-                suburb: item.suburb,
-                count: totalCount,
-                percentage:
-                  totalReports > 0 ? (totalCount / totalReports) * 100 : 0,
-              };
-            })
-            .sort((a, b) => b.count - a.count); // Sort by count descending
+          const suburbCountsArray: SuburbCount[] = statusDataArray.map((item: any) => {
+          const totalCount =
+              (item.Completed || 0) +
+              (item.Escalated || 0) +
+              (item["False report"] || 0) +
+              (item["On-Going"] || 0) +
+              (item.Abandoned || 0);
+              
+      return {
+              suburb: item.suburb,
+              count: totalCount,
+              percentage: totalReports > 0 ? (totalCount / totalReports) * 100 : 0
+            };
+          }).sort((a, b) => b.count - a.count); // Sort by count descending
 
           setSuburbCounts(suburbCountsArray);
         } else {
@@ -184,10 +181,8 @@ export default function CrimeHeatmapPage() {
   };
 
   const renderStats = () => {
-    const avgPerArea = uniqueSuburbCount
-      ? (totalReports / uniqueSuburbCount).toFixed(1)
-      : "0";
-
+    const avgPerArea = uniqueSuburbCount ? (totalReports / uniqueSuburbCount).toFixed(1) : "0";
+    
     return (
       <div className="d-flex gap-2">
         <div className="stat-badge">
@@ -213,7 +208,7 @@ export default function CrimeHeatmapPage() {
         onChange={(e) => setSelectedType(e.target.value)}
         className="form-select"
         disabled={loading}
-        style={{ minWidth: "180px" }}
+        style={{ minWidth: '180px' }}
       >
         {reportTypes.map((type) => (
           <option key={type} value={type}>
@@ -250,15 +245,14 @@ export default function CrimeHeatmapPage() {
           font-weight: 600;
           color: white;
         }
-
+        
         .card {
           border: none;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-            0 2px 4px -1px rgba(0, 0, 0, 0.06);
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
-
+        
         .card-header {
-          background: linear-gradient(135deg, #ff0000 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           border-bottom: none;
         }
 
@@ -347,11 +341,9 @@ export default function CrimeHeatmapPage() {
                   <i className={`${getReportIcon(selectedType)} me-2`}></i>
                   {selectedType} Analytics Dashboard
                 </h3>
-                <p className="mb-0 opacity-75">
-                  Real-time incident monitoring and analysis
-                </p>
+                <p className="mb-0 opacity-75">Real-time incident monitoring and analysis</p>
               </div>
-
+              
               <div className="d-flex gap-3 align-items-center">
                 {renderStats()}
                 {renderTypeSelector()}
@@ -369,9 +361,7 @@ export default function CrimeHeatmapPage() {
                   <div className="card metric-card">
                     <div className="card-body text-center">
                       <i className="fas fa-file-alt fs-2 text-primary mb-2"></i>
-                      <h4 className="text-primary mb-1">
-                        {totalReports.toLocaleString()}
-                      </h4>
+                      <h4 className="text-primary mb-1">{totalReports.toLocaleString()}</h4>
                       <p className="text-muted mb-0">Total Reports</p>
                     </div>
                   </div>
@@ -390,9 +380,7 @@ export default function CrimeHeatmapPage() {
                     <div className="card-body text-center">
                       <i className="fas fa-chart-line fs-2 text-warning mb-2"></i>
                       <h4 className="text-warning mb-1">
-                        {uniqueSuburbCount
-                          ? (totalReports / uniqueSuburbCount).toFixed(1)
-                          : "0"}
+                        {uniqueSuburbCount ? (totalReports / uniqueSuburbCount).toFixed(1) : "0"}
                       </h4>
                       <p className="text-muted mb-0">Average per Area</p>
                     </div>
@@ -503,20 +491,20 @@ export default function CrimeHeatmapPage() {
                   <div className="card-body p-0">
                     <div className="affected-areas-list">
                       {suburbCounts.map((item, index) => {
-                        let riskClass = "low-risk";
-                        let riskIcon = "fas fa-check-circle text-success";
-
+                        let riskClass = 'low-risk';
+                        let riskIcon = 'fas fa-check-circle text-success';
+                        
                         if (item.percentage >= 10) {
-                          riskClass = "high-risk";
-                          riskIcon = "fas fa-exclamation-triangle text-danger";
+                          riskClass = 'high-risk';
+                          riskIcon = 'fas fa-exclamation-triangle text-danger';
                         } else if (item.percentage >= 5) {
-                          riskClass = "medium-risk";
-                          riskIcon = "fas fa-exclamation-circle text-warning";
+                          riskClass = 'medium-risk';
+                          riskIcon = 'fas fa-exclamation-circle text-warning';
                         }
 
                         return (
-                          <div
-                            key={item.suburb}
+                          <div 
+                            key={item.suburb} 
                             className={`area-item p-3 border-bottom ${riskClass}`}
                           >
                             <div className="d-flex justify-content-between align-items-start">
@@ -530,7 +518,7 @@ export default function CrimeHeatmapPage() {
                                   </h6>
                                   <i className={`${riskIcon} ms-2`}></i>
                                 </div>
-
+                                
                                 <div className="d-flex justify-content-between align-items-center mb-2">
                                   <span className="text-muted small">
                                     {item.count} reports
@@ -541,21 +529,13 @@ export default function CrimeHeatmapPage() {
                                 </div>
 
                                 <div className="progress progress-thin">
-                                  <div
+                                  <div 
                                     className={`progress-bar ${
-                                      item.percentage >= 10
-                                        ? "bg-danger"
-                                        : item.percentage >= 5
-                                        ? "bg-warning"
-                                        : "bg-success"
+                                      item.percentage >= 10 ? 'bg-danger' :
+                                      item.percentage >= 5 ? 'bg-warning' : 'bg-success'
                                     }`}
-                                    role="progressbar"
-                                    style={{
-                                      width: `${Math.min(
-                                        item.percentage * 2,
-                                        100
-                                      )}%`,
-                                    }}
+                                    role="progressbar" 
+                                    style={{ width: `${Math.min(item.percentage * 2, 100)}%` }}
                                   ></div>
                                 </div>
                               </div>
@@ -581,9 +561,7 @@ export default function CrimeHeatmapPage() {
                 <div className="card-body text-center py-5">
                   <i className="fas fa-chart-bar fs-1 text-muted opacity-50"></i>
                   <h4 className="mt-3 text-muted">No Data Available</h4>
-                  <p className="text-muted">
-                    No reports found for the selected type: {selectedType}
-                  </p>
+                  <p className="text-muted">No reports found for the selected type: {selectedType}</p>
                 </div>
               </div>
             </div>

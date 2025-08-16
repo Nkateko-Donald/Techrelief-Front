@@ -305,11 +305,12 @@ export default function SettingsClient() {
       </div>
     );
   }
-  /*background: "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)", settings contaner*/
+
   return (
     <div className="page-inner">
       <style jsx>{`
         .settings-container {
+          background: linear-gradient(135deg, #ff0000 0%, #764ba2 100%);
           border-radius: 16px;
           padding: 2rem;
           box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
@@ -325,7 +326,7 @@ export default function SettingsClient() {
         }
 
         .nav-title {
-          color: black;
+          color: white;
           font-size: 1.1rem;
           font-weight: 600;
           margin-bottom: 1.5rem;
