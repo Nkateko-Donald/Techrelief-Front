@@ -24,17 +24,18 @@ interface HeatPoint {
   intensity: number;
 }
 
-interface SuburbCount {
-  name: string;
-  count: number;
-}
-
 interface SuburbApiResponse {
   success: boolean;
   reports: ReportWithSuburb[];
   uniqueSuburbs: string[];
   totalReports: number;
   uniqueSuburbCount: number;
+}
+
+interface SuburbCount {
+  suburb: string;
+  count: number;
+  percentage: number;
 }
 
 const reportTypes = [
@@ -45,18 +46,28 @@ const reportTypes = [
   "Suspicious Activity",
 ];
 
+const statusColors = {
+  "Completed": "#10b981",
+  "Escalated": "#f59e0b",
+  "False report": "#ef4444",
+  "On-Going": "#3b82f6",
+  "Abandoned": "#9caa1dff",
+};
+
 export default function CrimeHeatmapPage() {
   const [heatData, setHeatData] = useState<HeatPoint[]>([]);
-  const [suburbs, setSuburbs] = useState<SuburbCount[]>([]);
+  const [statusData, setStatusData] = useState<any[]>([]);
+  const [suburbCounts, setSuburbCounts] = useState<SuburbCount[]>([]);
   const [selectedType, setSelectedType] = useState("Crime");
   const [totalReports, setTotalReports] = useState(0);
   const [uniqueSuburbCount, setUniqueSuburbCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    async function fetchReportsWithSuburbs() {
+    async function fetchReports() {
       setLoading(true);
       try {
+        // 1️⃣ Fetch suburb + location data for heatmap
         const res = await fetch(
           `https://myappapi-yo3p.onrender.com/getSuburbsByType?type=${encodeURIComponent(
             selectedType
@@ -65,6 +76,7 @@ export default function CrimeHeatmapPage() {
         const data: SuburbApiResponse = await res.json();
 
         if (data.success && Array.isArray(data.reports)) {
+          // Heatmap points
           const pointMap: Record<string, number> = {};
           const points: HeatPoint[] = [];
 
@@ -72,7 +84,6 @@ export default function CrimeHeatmapPage() {
             const [latStr, lngStr] = report.Report_Location.split(";");
             const lat = parseFloat(latStr);
             const lng = parseFloat(lngStr);
-
             if (!isNaN(lat) && !isNaN(lng)) {
               const key = `${lat},${lng}`;
               pointMap[key] = (pointMap[key] || 0) + 1;
@@ -85,32 +96,69 @@ export default function CrimeHeatmapPage() {
           });
 
           setHeatData(points);
-
-          const suburbCounts: Record<string, number> = {};
-          data.reports.forEach((r) => {
-            suburbCounts[r.suburb] = (suburbCounts[r.suburb] || 0) + 1;
-          });
-
-          const suburbArray = Object.entries(suburbCounts).map(
-            ([name, count]) => ({
-              name,
-              count,
-            })
-          );
-
-          setSuburbs(suburbArray);
           setTotalReports(data.totalReports);
           setUniqueSuburbCount(data.uniqueSuburbCount);
         } else {
           setHeatData([]);
-          setSuburbs([]);
           setTotalReports(0);
           setUniqueSuburbCount(0);
         }
+
+        // 2️⃣ Fetch status breakdown
+        const statusRes = await fetch(
+          `https://myappapi-yo3p.onrender.com/getcountbyemergency?type=${encodeURIComponent(
+            selectedType
+          )}`
+        );
+        const statusJson = await statusRes.json();
+
+        if (statusJson.success && Array.isArray(statusJson.data)) {
+          const pivot: Record<string, any> = {};
+          statusJson.data.forEach((row: any) => {
+            const suburb = row.suburbName || "Unknown";
+            const status = row.Report_Status || "Unknown";
+            if (!pivot[suburb]) {
+              pivot[suburb] = {
+                suburb,
+                Completed: 0,
+                Escalated: 0,
+                "False Report": 0,
+                "On-Going": 0,
+                Abandoned: 0,
+              };
+            }
+            pivot[suburb][status] = row.report_count;
+          });
+          
+          const statusDataArray = Object.values(pivot);
+          setStatusData(statusDataArray);
+
+          // Create suburb counts from status data
+          const suburbCountsArray: SuburbCount[] = statusDataArray.map((item: any) => {
+          const totalCount =
+              (item.Completed || 0) +
+              (item.Escalated || 0) +
+              (item["False report"] || 0) +
+              (item["On-Going"] || 0) +
+              (item.Abandoned || 0);
+              
+      return {
+              suburb: item.suburb,
+              count: totalCount,
+              percentage: totalReports > 0 ? (totalCount / totalReports) * 100 : 0
+            };
+          }).sort((a, b) => b.count - a.count); // Sort by count descending
+
+          setSuburbCounts(suburbCountsArray);
+        } else {
+          setStatusData([]);
+          setSuburbCounts([]);
+        }
       } catch (error) {
-        console.error("Error loading reports with suburbs:", error);
+        console.error("Error loading reports:", error);
         setHeatData([]);
-        setSuburbs([]);
+        setStatusData([]);
+        setSuburbCounts([]);
         setTotalReports(0);
         setUniqueSuburbCount(0);
       } finally {
@@ -118,174 +166,408 @@ export default function CrimeHeatmapPage() {
       }
     }
 
-    fetchReportsWithSuburbs();
+    fetchReports();
   }, [selectedType]);
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-8 md:p-12 font-sans text-gray-800">
-      <h1 className="text-4xl font-extrabold mb-8 text-center text-gray-900">
-        {selectedType} Heatmap
-      </h1>
+  const getReportIcon = (type: string) => {
+    const icons: Record<string, string> = {
+      Crime: "fas fa-shield-alt",
+      Fire: "fas fa-fire",
+      "Natural Disaster": "fas fa-tornado",
+      SOS: "fas fa-exclamation-triangle",
+      "Suspicious Activity": "fas fa-eye",
+    };
+    return icons[type] || "fas fa-chart-bar";
+  };
 
-      {/* Filter */}
-      <div className="max-w-sm mx-auto mb-8">
-        <label
-          htmlFor="typeFilter"
-          className="block mb-3 text-lg font-semibold text-gray-700"
-        >
-          Filter by Report Type
-        </label>
-        <select
-          id="typeFilter"
-          value={selectedType}
-          onChange={(e) => setSelectedType(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-5 py-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-          disabled={loading}
-        >
-          {reportTypes.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Loading or content */}
-      {loading ? (
-        <div className="flex justify-center items-center text-gray-600 space-x-2">
-          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-800"></div>
-          <span>Loading data...</span>
+  const renderStats = () => {
+    const avgPerArea = uniqueSuburbCount ? (totalReports / uniqueSuburbCount).toFixed(1) : "0";
+    
+    return (
+      <div className="d-flex gap-2">
+        <div className="stat-badge">
+          <i className="fas fa-file-alt me-1"></i>
+          {totalReports.toLocaleString()} Reports
         </div>
-      ) : heatData.length > 0 ? (
-        <>
-          {/* Stats */}
-          <div className="max-w-4xl mx-auto mb-6 p-5 bg-white rounded-xl shadow-md flex justify-around text-center space-x-4">
-            <div>
-              <p className="text-sm uppercase tracking-wider text-gray-500">
-                Total Reports
-              </p>
-              <p className="text-2xl font-bold text-blue-600">
-                {totalReports.toLocaleString()}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm uppercase tracking-wider text-gray-500">
-                Unique Suburbs
-              </p>
-              <p className="text-2xl font-bold text-blue-600">
-                {uniqueSuburbCount}
-              </p>
+        <div className="stat-badge">
+          <i className="fas fa-map-marker-alt me-1"></i>
+          {heatData.length} Heat Points
+        </div>
+        <div className="stat-badge">
+          <i className="fas fa-chart-line me-1"></i>
+          {avgPerArea} Avg/Area
+        </div>
+      </div>
+    );
+  };
+
+  const renderTypeSelector = () => (
+    <div className="dropdown">
+      <select
+        value={selectedType}
+        onChange={(e) => setSelectedType(e.target.value)}
+        className="form-select"
+        disabled={loading}
+        style={{ minWidth: '180px' }}
+      >
+        {reportTypes.map((type) => (
+          <option key={type} value={type}>
+            {type}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="container-fluid py-4">
+        <div className="text-center">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-3 text-muted">Loading analytics data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <style jsx>{`
+        .stat-badge {
+          background: rgba(255, 255, 255, 0.2);
+          backdrop-filter: blur(10px);
+          padding: 8px 16px;
+          border-radius: 20px;
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: white;
+        }
+        
+        .card {
+          border: none;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .card-header {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border-bottom: none;
+        }
+
+        .status-legend {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 1rem;
+          align-items: center;
+        }
+
+        .legend-item {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.875rem;
+          color: white;
+        }
+
+        .legend-dot {
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+        }
+
+        .chart-container {
+          height: 400px;
+        }
+
+        .affected-areas-list {
+          max-height: 400px;
+          overflow-y: auto;
+        }
+
+        .area-item {
+          border-left: 4px solid transparent;
+          transition: all 0.2s ease;
+        }
+
+        .area-item:hover {
+          background-color: #f8f9fa;
+          border-left-color: #667eea;
+        }
+
+        .area-item.high-risk {
+          border-left-color: #dc3545;
+        }
+
+        .area-item.medium-risk {
+          border-left-color: #ffc107;
+        }
+
+        .area-item.low-risk {
+          border-left-color: #28a745;
+        }
+
+        .progress-thin {
+          height: 4px;
+        }
+
+        .metric-card {
+          background: rgba(255, 255, 255, 0.95);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          backdrop-filter: blur(10px);
+        }
+
+        .form-select {
+          background-color: rgba(255, 255, 255, 0.9);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          color: #495057;
+        }
+
+        .form-select:focus {
+          background-color: white;
+          border-color: rgba(255, 255, 255, 0.5);
+          box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
+        }
+      `}</style>
+
+      <div className="container-fluid py-4">
+        {/* Main Header Card */}
+        <div className="card mb-4">
+          <div className="card-header text-white py-4">
+            <div className="d-flex justify-content-between align-items-center">
+              <div>
+                <h3 className="mb-1">
+                  <i className={`${getReportIcon(selectedType)} me-2`}></i>
+                  {selectedType} Analytics Dashboard
+                </h3>
+                <p className="mb-0 opacity-75">Real-time incident monitoring and analysis</p>
+              </div>
+              
+              <div className="d-flex gap-3 align-items-center">
+                {renderStats()}
+                {renderTypeSelector()}
+              </div>
             </div>
           </div>
+        </div>
 
-          {/* Heatmap */}
-          <div className="max-w-6xl mx-auto rounded-xl overflow-hidden shadow-lg border border-gray-300 mb-10 bg-white">
-            <HeatmapComponent data={heatData} />
-          </div>
-
-          {/* Suburb List */}
-          <section className="max-w-6xl mx-auto">
-            <h2 className="text-2xl font-semibold mb-6 text-gray-900">
-              Affected Suburbs ({suburbs.length})
-            </h2>
-            {suburbs.length > 0 ? (
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {suburbs
-                    .sort((a, b) => b.count - a.count)
-                    .map((suburb) => (
-                      <div
-                        key={suburb.name}
-                        className="flex justify-between items-center border-b border-gray-200 pb-3 last:border-b-0"
-                      >
-                        <span className="text-base font-medium text-gray-800 truncate pr-2">
-                          {suburb.name}
-                        </span>
-                        <span className="bg-blue-100 text-blue-800 px-4 py-1 rounded-full text-sm font-semibold select-none">
-                          {suburb.count}{" "}
-                          {suburb.count === 1 ? "report" : "reports"}
-                        </span>
-                      </div>
-                    ))}
+        {!loading && heatData.length > 0 ? (
+          <div className="row g-4">
+            {/* Quick Metrics Row */}
+            <div className="col-12">
+              <div className="row g-3">
+                <div className="col-md-4">
+                  <div className="card metric-card">
+                    <div className="card-body text-center">
+                      <i className="fas fa-file-alt fs-2 text-primary mb-2"></i>
+                      <h4 className="text-primary mb-1">{totalReports.toLocaleString()}</h4>
+                      <p className="text-muted mb-0">Total Reports</p>
+                    </div>
+                  </div>
                 </div>
-
-                {/* Top 3 highlight */}
-                <div className="mt-8 pt-6 border-t border-gray-300">
-                  <h3 className="text-lg font-semibold text-gray-700 mb-4">
-                    Most Affected Areas:
-                  </h3>
-                  <div className="flex flex-wrap gap-3">
-                    {suburbs
-                      .sort((a, b) => b.count - a.count)
-                      .slice(0, 3)
-                      .map((suburb, index) => (
-                        <div
-                          key={suburb.name}
-                          className={`px-4 py-2 rounded-full text-sm font-medium select-none ${
-                            index === 0
-                              ? "bg-red-100 text-red-800"
-                              : index === 1
-                              ? "bg-orange-100 text-orange-800"
-                              : "bg-yellow-100 text-yellow-800"
-                          }`}
-                        >
-                          #{index + 1} {suburb.name} ({suburb.count})
-                        </div>
-                      ))}
+                <div className="col-md-4">
+                  <div className="card metric-card">
+                    <div className="card-body text-center">
+                      <i className="fas fa-map-marker-alt fs-2 text-success mb-2"></i>
+                      <h4 className="text-success mb-1">{heatData.length}</h4>
+                      <p className="text-muted mb-0">Heat Points</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="col-md-4">
+                  <div className="card metric-card">
+                    <div className="card-body text-center">
+                      <i className="fas fa-chart-line fs-2 text-warning mb-2"></i>
+                      <h4 className="text-warning mb-1">
+                        {uniqueSuburbCount ? (totalReports / uniqueSuburbCount).toFixed(1) : "0"}
+                      </h4>
+                      <p className="text-muted mb-0">Average per Area</p>
+                    </div>
                   </div>
                 </div>
               </div>
-            ) : (
-              <p className="text-center text-gray-500">
-                No suburb data available.
-              </p>
-            )}
-          </section>
+            </div>
 
-          {/* Bar Chart */}
-          {suburbs.length > 0 && (
-            <section className="max-w-6xl mx-auto mt-12">
-              <h2 className="text-2xl font-semibold mb-6 text-gray-900">
-                Top Suburbs by Report Count
-              </h2>
-              <div className="w-full h-80 bg-white rounded-xl shadow-md p-6 border border-gray-200">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={suburbs
-                      .sort((a, b) => b.count - a.count)
-                      .slice(0, 10)}
-                    margin={{ top: 20, right: 20, left: 10, bottom: 70 }}
-                    barCategoryGap="20%"
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                    <XAxis
-                      dataKey="name"
-                      angle={-45}
-                      textAnchor="end"
-                      interval={0}
-                      height={60}
-                      tick={{ fontSize: 13, fill: "#444" }}
-                    />
-                    <YAxis allowDecimals={false} tick={{ fill: "#444" }} />
-                    <Tooltip
-                      cursor={{ fill: "rgba(0,0,0,0.1)" }}
-                      formatter={(value: number) => [
-                        `${value} report${value !== 1 ? "s" : ""}`,
-                        "Reports",
-                      ]}
-                    />
-                    <Bar dataKey="count" fill="#2563eb" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+            {/* Heatmap Section */}
+            <div className="col-12">
+              <div className="card">
+                <div className="card-header text-white py-3">
+                  <h4 className="mb-0">
+                    <i className="fas fa-map me-2"></i>
+                    Geographic Distribution Heatmap
+                  </h4>
+                </div>
+                <div className="card-body">
+                  <HeatmapComponent data={heatData} />
+                </div>
               </div>
-            </section>
-          )}
-        </>
-      ) : (
-        <div className="text-center text-gray-600 mt-12 text-lg">
-          No data available for the selected report type.
-        </div>
-      )}
-    </div>
+            </div>
+
+            {/* Status Breakdown Chart */}
+            {statusData.length > 0 && (
+              <div className="col-lg-8">
+                <div className="card">
+                  <div className="card-header text-white py-3">
+                    <div className="d-flex justify-content-between align-items-center">
+                      <h4 className="mb-0">
+                        <i className="fas fa-chart-bar me-2"></i>
+                        Report Status Distribution
+                      </h4>
+                      <div className="status-legend">
+                        {Object.entries(statusColors).map(([status, color]) => (
+                          <div key={status} className="legend-item">
+                            <div
+                              className="legend-dot"
+                              style={{ backgroundColor: color }}
+                            ></div>
+                            <span>{status}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="card-body">
+                    <div className="chart-container">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={statusData}
+                          margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="suburb"
+                            angle={-45}
+                            textAnchor="end"
+                            interval={0}
+                            height={60}
+                            tick={{ fontSize: 12 }}
+                          />
+                          <YAxis allowDecimals={false} />
+                          <Tooltip />
+                          <Bar
+                            dataKey="Completed"
+                            stackId="a"
+                            fill={statusColors["Completed"]}
+                          />
+                          <Bar
+                            dataKey="Escalated"
+                            stackId="a"
+                            fill={statusColors["Escalated"]}
+                          />
+                          <Bar
+                            dataKey="False report"
+                            stackId="a"
+                            fill={statusColors["False report"]}
+                          />
+                          <Bar
+                            dataKey="On-Going"
+                            stackId="a"
+                            fill={statusColors["On-Going"]}
+                          />
+                          <Bar
+                            dataKey="Abandoned"
+                            stackId="a"
+                            fill={statusColors["Abandoned"]}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Affected Areas List */}
+            {suburbCounts.length > 0 && (
+              <div className="col-lg-4">
+                <div className="card">
+                  <div className="card-header text-white py-3">
+                    <h4 className="mb-0">
+                      <i className="fas fa-map-marked-alt me-2"></i>
+                      Most Affected Areas
+                    </h4>
+                  </div>
+                  <div className="card-body p-0">
+                    <div className="affected-areas-list">
+                      {suburbCounts.map((item, index) => {
+                        let riskClass = 'low-risk';
+                        let riskIcon = 'fas fa-check-circle text-success';
+                        
+                        if (item.percentage >= 10) {
+                          riskClass = 'high-risk';
+                          riskIcon = 'fas fa-exclamation-triangle text-danger';
+                        } else if (item.percentage >= 5) {
+                          riskClass = 'medium-risk';
+                          riskIcon = 'fas fa-exclamation-circle text-warning';
+                        }
+
+                        return (
+                          <div 
+                            key={item.suburb} 
+                            className={`area-item p-3 border-bottom ${riskClass}`}
+                          >
+                            <div className="d-flex justify-content-between align-items-start">
+                              <div className="flex-grow-1">
+                                <div className="d-flex align-items-center mb-2">
+                                  <span className="badge bg-secondary me-2">
+                                    #{index + 1}
+                                  </span>
+                                  <h6 className="mb-0 fw-semibold">
+                                    {item.suburb}
+                                  </h6>
+                                  <i className={`${riskIcon} ms-2`}></i>
+                                </div>
+                                
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                  <span className="text-muted small">
+                                    {item.count} reports
+                                  </span>
+                                  <span className="fw-bold text-primary">
+                                    {item.percentage.toFixed(1)}%
+                                  </span>
+                                </div>
+
+                                <div className="progress progress-thin">
+                                  <div 
+                                    className={`progress-bar ${
+                                      item.percentage >= 10 ? 'bg-danger' :
+                                      item.percentage >= 5 ? 'bg-warning' : 'bg-success'
+                                    }`}
+                                    role="progressbar" 
+                                    style={{ width: `${Math.min(item.percentage * 2, 100)}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="card-footer bg-light text-center py-2">
+                    <small className="text-muted">
+                      Showing {suburbCounts.length} affected areas
+                    </small>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          !loading && (
+            <div className="col-12">
+              <div className="card">
+                <div className="card-body text-center py-5">
+                  <i className="fas fa-chart-bar fs-1 text-muted opacity-50"></i>
+                  <h4 className="mt-3 text-muted">No Data Available</h4>
+                  <p className="text-muted">No reports found for the selected type: {selectedType}</p>
+                </div>
+              </div>
+            </div>
+          )
+        )}
+      </div>
+    </>
   );
 }
