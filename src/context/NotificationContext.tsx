@@ -28,6 +28,20 @@ interface NotificationData {
   createdAt: Date;
 }
 
+// Add ServerNotification interface to avoid 'any'
+interface ServerNotification {
+  NotificationID: number;
+  NotificationType: string;
+  EntityType: string;
+  EntityID: number;
+  Title: string;
+  Message: string;
+  CreatedAt: string;
+  Metadata: string | null;
+  IsRead: boolean;
+  ReadAt: string | null;
+}
+
 interface NotificationContextType {
   showNotification: (data: Omit<NotificationData, "id" | "isRead">) => void;
   markAsRead: (id: number) => void;
@@ -44,7 +58,7 @@ const NotificationContext = createContext<NotificationContextType | undefined>(
 );
 
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   //const [unreadCount, setUnreadCount] = useState(0);
   const BASE =
@@ -98,13 +112,14 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       const data = await response.json();
 
       // Map server notifications to client format
-      const mappedNotifications = data.map((n: any) => ({
+      // Use ServerNotification interface
+      const mappedNotifications = data.map((n: ServerNotification) => ({
         id: n.NotificationID,
         type: mapNotificationType(n.NotificationType),
         title: n.Title,
         content: n.Message,
         isRead: n.IsRead,
-        link: generateLink(n), // You'll need to generate this based on your data
+        link: generateLink(n),
         createdAt: new Date(n.CreatedAt),
       }));
 
@@ -112,10 +127,10 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error("Error fetching notifications:", error);
     }
-  }, [BASE, user]);
+  }, [BASE, user?.UserID]);
 
   // Add this to your notification mapping
-  const generateLink = (notification: any): string => {
+  const generateLink = (notification: ServerNotification): string => {
     switch (notification.EntityType) {
       case "MESSAGE":
         return `/BroadCast`;
@@ -159,19 +174,16 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Update markAsRead function
-  const markAsRead = useCallback(
-    async (id: number) => {
-      try {
-        // ... API call ...
-        setNotifications((prev) =>
-          prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-        );
-      } catch (error) {
-        console.error("Error marking notification as read:", error);
-      }
-    },
-    [BASE, user]
-  );
+  const markAsRead = useCallback(async (id: number) => {
+    try {
+      // ... API call ...
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+      );
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
+  }, []);
 
   // Mark all notifications as read
   // Update markAllAsRead function
@@ -182,13 +194,12 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error("Error marking all as read:", error);
     }
-  }, [BASE, user]);
+  }, []);
 
   // Fetch notifications on mount and when user changes
   useEffect(() => {
     if (user?.UserID) {
       fetchNotifications();
-      //fetchUnreadCount();
     }
   }, [user?.UserID, fetchNotifications]);
 

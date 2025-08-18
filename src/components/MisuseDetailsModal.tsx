@@ -1,4 +1,3 @@
-import React, { useState, useEffect } from "react";
 import {
   X,
   AlertTriangle,
@@ -10,8 +9,20 @@ import {
 } from "lucide-react";
 import ReactDOM from "react-dom";
 
+// Define proper interface instead of 'any'
+interface MisuseReport {
+  MisuseID: number;
+  ReportType: string;
+  Status: string;
+  InitialDescription: string;
+  Filers: string;
+  FilerCount: number;
+  CreatedAt: string;
+  MisuseStatus: string;
+}
+
 interface MisuseDetailsModalProps {
-  misuses: any[];
+  misuses: MisuseReport[];
   onClose: () => void;
 }
 

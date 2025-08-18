@@ -19,6 +19,27 @@ interface CommunityMember {
   Role: string;
   flagCount: number;
   misuseCount: number;
+
+}
+
+interface MisuseReport {
+  MisuseID: number;
+  ReportType: string;
+  Status: string;
+  InitialDescription: string;
+  Filers: string;
+  FilerCount: number;
+  CreatedAt: string;
+  MisuseStatus: string;
+}
+
+interface Flag {
+  FlagID: number;
+  FlagType: string;
+  Description?: string;
+  CreatedAt?: string;
+  ReporterName?: string;
+  Status: string;
 }
 
 type SortOption = "ID" | "Name" | "Responses" | "Flags" | "Misuses";
@@ -39,8 +60,8 @@ const CommunityMemberManagement = () => {
   const [showMisuseModal, setShowMisuseModal] = useState(false);
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState<CommunityMember | null>(null);
-  const [selectedMisuses, setSelectedMisuses] = useState<any[]>([]);
-  const [selectedFlags, setSelectedFlags] = useState<any[]>([]);
+  const [selectedMisuses, setSelectedMisuses] = useState<MisuseReport[]>([]);
+  const [selectedFlags, setSelectedFlags] = useState<Flag[]>([]);
   
   // Table controls
   const [sortBy, setSortBy] = useState<SortOption>("ID");
@@ -83,9 +104,9 @@ const CommunityMemberManagement = () => {
       );
 
       setMembers(updatedVolunteers);
-    } catch (err: any) {
-      console.error("Error fetching volunteers:", err);
-      setError(err.message || "Failed to load community members");
+    }  catch (err: unknown) {
+                const error = err instanceof Error ? err.message : "Error fetching volunteers:";
+      setError(error || "Failed to load community members");
     } finally {
       setLoading(false);
     }
@@ -93,29 +114,74 @@ const CommunityMemberManagement = () => {
 
   // Modal handlers
   const handleOpenMisuseModal = async (userId: number) => {
-    try {
-      const response = await fetch(`${BASE}/api/misuses/user/${userId}`);
-      if (!response.ok) throw new Error("Failed to fetch misuse details");
-      const misuses = await response.json();
-      setSelectedMisuses(misuses);
-      setShowMisuseModal(true);
-    } catch (err) {
-      console.error("Error fetching misuses:", err);
-      setError("Failed to load misuse details");
-    }
+   try {
+    const response = await fetch(`${BASE}/api/misuses/user/${userId}`);
+    if (!response.ok) throw new Error("Failed to fetch misuse details");
+    
+    const data = await response.json();
+    
+    // Transform the API response to match MisuseReport
+    const misuses: MisuseReport[] = data.map((item: {
+      id: number;
+      type?: string;
+      status?: string;
+      description?: string;
+      reporters?: string[];
+      reporter_count?: number;
+      created_at?: string;
+      resolution_status?: string;
+    }) => ({
+      MisuseID: item.id,
+      ReportType: item.type || 'Unknown',
+      Status: item.status || 'Pending',
+      InitialDescription: item.description || 'No description provided',
+      Filers: item.reporters?.join(', ') || 'Anonymous',
+      FilerCount: item.reporter_count || 1,
+      CreatedAt: item.created_at || new Date().toISOString(),
+      MisuseStatus: item.resolution_status || 'Pending'
+    }));
+    
+    setSelectedMisuses(misuses);
+    setShowMisuseModal(true);
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err.message : "Failed to load misuse details";
+    console.error("Error fetching misuses:", error);
+    setError(error);
+  }
   };
 
   const handleOpenFlagModal = async (userId: number) => {
-    try {
-      const response = await fetch(`${BASE}/api/flags/user/${userId}`);
-      if (!response.ok) throw new Error("Failed to fetch flag details");
-      const flags = await response.json();
-      setSelectedFlags(flags);
-      setShowFlagModal(true);
-    } catch (err) {
-      console.error("Error fetching flags:", err);
-      setError("Failed to load flag details");
-    }
+   try {
+    const response = await fetch(`${BASE}/api/flags/user/${userId}`);
+    if (!response.ok) throw new Error("Failed to fetch flag details");
+    
+    const apiFlags = await response.json();
+    
+    // Transform API response to match Flag interface
+    const flags: Flag[] = apiFlags.map((item: {
+      id: number;
+      type?: string;
+      description?: string;
+      created_at?: string;
+      reporter_name?: string;
+      reporter?: { name?: string };
+      status?: string;
+    }) => ({
+      FlagID: item.id,
+      FlagType: item.type || 'General',
+      Description: item.description,
+      CreatedAt: item.created_at,
+      ReporterName: item.reporter_name || item.reporter?.name || 'Anonymous',
+      Status: item.status || 'Pending'
+    }));
+    
+    setSelectedFlags(flags);
+    setShowFlagModal(true);
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err.message : "Failed to load flag details";
+    console.error("Error fetching flags:", error);
+    setError(error);
+  }
   };
 
   const handleSleepUser = async (userId: number, durationHours: number, sleepType: string) => {
@@ -141,9 +207,10 @@ const CommunityMemberManagement = () => {
       );
 
       setShowSleepModal(false);
-    } catch (err: any) {
-      console.error("Error putting user to sleep:", err);
-      setError(err.message || "Failed to put user to sleep");
+    } catch (err: unknown) {
+  const error = err instanceof Error ? err.message : "Error putting user to sleep:";
+  setError(error|| "Failed to put user to sleep");
+    
     }
   };
 

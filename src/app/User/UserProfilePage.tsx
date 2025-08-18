@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from 'next/image';
 import {
   ArrowLeft,
   Mail,
@@ -20,8 +21,6 @@ import {
   Download,
   Settings,
   MoreHorizontal,
-  Building,
-  Hash,
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
@@ -78,9 +77,10 @@ const UserProfilePage = () => {
           setUser(data.User);
         }
       } catch (err) {
-        setError("An unexpected error occurred.");
-        setUser(null);
-      } finally {
+              const message = err instanceof Error ? err.message : "An unexpected error occurred.";
+              setError(message);
+               setUser(null);
+            }finally {
         setIsLoading(false);
       }
     }
@@ -99,9 +99,13 @@ const UserProfilePage = () => {
         }
 
         setReports(data.reports || []);
-      } catch (err:any) {
-        setReportsError(err.message || "An unexpected error occurred.");
-      } finally {
+      } catch (err: unknown) {  // Better than any
+          setReportsError(
+            err instanceof Error 
+              ? err.message 
+              : "An unexpected error occurred."
+          );
+        }finally {
         setReportsLoading(false);
       }
     }
@@ -209,7 +213,8 @@ const getStatusBadge = (status: string) => {
       <ChevronDown className="w-3 h-3 inline" />;
   };
 
-  const getPriorityLevel = (type:any) => {
+type EmergencyType = "Fire" | "Crime" | "SOS" | string;  // Explicit union type
+const getPriorityLevel = (type: EmergencyType) => { 
     switch (type) {
       case "Fire":
         return { color: "bg-red-500", level: "Critical" };
@@ -317,11 +322,13 @@ const getStatusBadge = (status: string) => {
                   <div className="relative inline-block">
                     <div className="w-16 h-16 bg-slate-600 rounded-full flex items-center justify-center text-white text-lg font-semibold">
                       {user.ProfilePhoto ? (
-                        <img
-                          src={user.ProfilePhoto}
-                          alt="Profile"
-                          className="w-full h-full object-cover rounded-full"
-                        />
+                        <Image
+                            src={user.ProfilePhoto}
+                            alt="Profile"
+                            width={64}
+                            height={64}
+                            className="w-full h-full object-cover rounded-full"
+                          />
                       ) : (
                         user.FullName.split(" ").map(n => n[0]).join("").toUpperCase()
                       )}

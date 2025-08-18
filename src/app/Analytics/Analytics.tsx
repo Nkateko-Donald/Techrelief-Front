@@ -9,7 +9,7 @@ export default function Analytics() {
   const incidentsRef = useRef<HTMLCanvasElement>(null);
   const timeRef = useRef<HTMLCanvasElement>(null);
   const typeRef = useRef<HTMLCanvasElement>(null);
-  const respondersRef = useRef<HTMLCanvasElement>(null);
+  //const respondersRef = useRef<HTMLCanvasElement>(null);
   const funnelRef = useRef<HTMLCanvasElement>(null);
   const messagesRef = useRef<HTMLCanvasElement>(null);
   const messagesChartRef = useRef<Chart | null>(null);
@@ -19,6 +19,7 @@ export default function Analytics() {
   const [timeFrame, setTimeFrame] = useState<"day" | "week" | "month" | "year">(
     "month"
   );
+  const [isTimeFrameOpen, setIsTimeFrameOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Chart data state
@@ -43,13 +44,13 @@ export default function Analytics() {
   const incidentsChartRef = useRef<Chart | null>(null);
   const timeChartRef = useRef<Chart | null>(null);
   const typeChartRef = useRef<Chart | null>(null);
-  const respondersChartRef = useRef<Chart | null>(null);
+  //const respondersChartRef = useRef<Chart | null>(null);
   const funnelChartRef = useRef<Chart | null>(null);
 
   const BASE =
     process.env.NEXT_PUBLIC_BACKEND_URL || "https://myappapi-yo3p.onrender.com";
 
-  // Unified color palette
+  // Unified color palette matching Community Management
   const colorPalette = {
     primary: "#667eea",
     secondary: "#764ba2",
@@ -79,25 +80,39 @@ export default function Analytics() {
   };
 
   // Helper: generate HTML legend
-  function renderHTMLLegend(chart: any, containerId: string) {
-    const { labels } = chart.data;
-    const bg = chart.data.datasets[0].backgroundColor;
+  function renderHTMLLegend(chart: Chart, containerId: string) {
+    const labels = (chart.data.labels || []) as string[];
+    const datasets = chart.data.datasets || [];
+    const bg = datasets.length > 0 ? datasets[0].backgroundColor : [];
+
     const items = labels
-      .map(
-        (label: string, i: number) =>
-          `<span class="legend-item d-inline-flex align-items-center me-3 mb-2">
-           <span class="legend-color" style="
-             display:inline-block;
-             width:14px;
-             height:14px;
-             background:${Array.isArray(bg) ? bg[i] : bg};
-             margin-right:8px;
-             border-radius:3px;
-             box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></span>
-           <span style="font-size: 0.875rem; font-weight: 500; color: #495057;">${label}</span>
-         </span>`
-      )
+      .map((label: string, i: number) => {
+        let bgColor = "#cccccc";
+        if (Array.isArray(bg)) {
+          bgColor = bg[i] || bgColor;
+        } else if (typeof bg === "string") {
+          bgColor = bg;
+        } else if (
+          bg instanceof CanvasGradient ||
+          bg instanceof CanvasPattern
+        ) {
+          bgColor = "#667eea";
+        }
+
+        return `<span class="legend-item d-inline-flex align-items-center me-3 mb-2">
+          <span class="legend-color" style="
+            display:inline-block;
+            width:14px;
+            height:14px;
+            background:${bgColor};
+            margin-right:8px;
+            border-radius:3px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></span>
+          <span style="font-size: 0.875rem; font-weight: 500; color: #495057;">${label}</span>
+        </span>`;
+      })
       .join("");
+
     const container = document.getElementById(containerId);
     if (container) {
       container.innerHTML = items;
@@ -162,9 +177,10 @@ export default function Analytics() {
               "Fire",
               "Natural Disaster",
               "SOS",
+              "Suspicious Activity",
               "Other",
             ],
-            data: [200, 150, 100, 80, 30, 10],
+            data: [200, 150, 100, 80, 30, 2, 10],
           };
 
       const respondersData = respondersRes.ok
@@ -190,7 +206,6 @@ export default function Analytics() {
             escalated: 15,
           };
 
-      // Parse response
       const messagesData = messagesRes.ok
         ? await messagesRes.json()
         : { total: 120, unflagged: 100, flagged: 20 };
@@ -205,7 +220,6 @@ export default function Analytics() {
       });
     } catch (err) {
       console.error("Error fetching analytics:", err);
-      // Full fallback data
       setChartData({
         overview: { reported: 660, resolved: 600, unresolved: 60 },
         time: {
@@ -232,9 +246,10 @@ export default function Analytics() {
             "Fire",
             "Natural Disaster",
             "SOS",
+            "Suspicious Activity",
             "Other",
           ],
-          data: [200, 150, 100, 80, 30, 10],
+          data: [200, 150, 100, 80, 30, 2, 10],
         },
         responders: {
           labels: [
@@ -259,25 +274,14 @@ export default function Analytics() {
       setLoading(false);
     }
   };
-  const funnelColors = {
-    blue: "#36A2EB", // Primary blue (existing)
-    teal: "#4BC0C0", // Teal (existing)
-    green: "#32CD32", // Lime green (vibrant)
-    coral: "#FF7F50", // Coral (warm)
-    slate: "#6A5ACD", // Slate blue (cool)
-    amber: "#FFBF00", // Amber (golden)
-    crimson: "#DC143C", // Crimson (rich red)
-  };
 
-  // Create or update charts
   const renderCharts = () => {
     // Destroy existing charts
     if (incidentsChartRef.current) incidentsChartRef.current.destroy();
     if (timeChartRef.current) timeChartRef.current.destroy();
     if (typeChartRef.current) typeChartRef.current.destroy();
-    if (respondersChartRef.current) respondersChartRef.current.destroy();
+    //if (respondersChartRef.current) respondersChartRef.current.destroy();
     if (funnelChartRef.current) funnelChartRef.current.destroy();
-    //if (messagesRef.current) messagesRef.current.destroy();
 
     const commonOptions = {
       responsive: true,
@@ -314,7 +318,7 @@ export default function Analytics() {
       },
     };
 
-    // Render Total Incidents Overview
+    // Render charts (same as before)
     if (incidentsRef.current) {
       const ctx = incidentsRef.current.getContext("2d");
       if (ctx) {
@@ -374,7 +378,6 @@ export default function Analytics() {
       }
     }
 
-    // Render Reports Over Time
     if (timeRef.current) {
       const ctx = timeRef.current.getContext("2d");
       if (ctx) {
@@ -427,7 +430,6 @@ export default function Analytics() {
       }
     }
 
-    // Render Reports by Type
     if (typeRef.current) {
       const ctx = typeRef.current.getContext("2d");
       if (ctx) {
@@ -444,6 +446,8 @@ export default function Analytics() {
                   colorPalette.chart.orange,
                   colorPalette.chart.purple,
                   colorPalette.chart.teal,
+                  colorPalette.chart.yellow,
+                  colorPalette.chart.pink,
                 ],
                 borderColor: [
                   colorPalette.chart.red,
@@ -451,6 +455,8 @@ export default function Analytics() {
                   colorPalette.chart.orange,
                   colorPalette.chart.purple,
                   colorPalette.chart.teal,
+                  colorPalette.chart.yellow,
+                  colorPalette.chart.pink,
                 ],
                 borderWidth: 2,
                 borderRadius: 8,
@@ -487,8 +493,7 @@ export default function Analytics() {
       }
     }
 
-    // Render Top Responders
-    if (respondersRef.current) {
+    /*if (respondersRef.current) {
       const ctx = respondersRef.current.getContext("2d");
       if (ctx) {
         respondersChartRef.current = new Chart(ctx, {
@@ -529,9 +534,8 @@ export default function Analytics() {
         });
         renderHTMLLegend(respondersChartRef.current, "respondersLegend");
       }
-    }
+    }*/
 
-    // Render Request Lifecycle Funnel
     if (funnelRef.current) {
       const ctx = funnelRef.current.getContext("2d");
       if (ctx) {
@@ -559,22 +563,22 @@ export default function Analytics() {
                   chartData.funnel.escalated,
                 ],
                 backgroundColor: [
-                  funnelColors.blue, // Logged
-                  funnelColors.teal, // Accepted
-                  funnelColors.green, // Resolved
-                  funnelColors.coral, // Ongoing
-                  funnelColors.slate, // Abandoned
-                  funnelColors.amber, // False Reports
-                  funnelColors.crimson, // Escalated
+                  colorPalette.chart.blue,
+                  colorPalette.chart.teal,
+                  colorPalette.chart.green,
+                  colorPalette.chart.orange,
+                  colorPalette.chart.purple,
+                  colorPalette.chart.yellow,
+                  colorPalette.chart.red,
                 ],
                 borderColor: [
-                  funnelColors.blue, // Logged
-                  funnelColors.teal, // Accepted
-                  funnelColors.green, // Resolved
-                  funnelColors.coral, // Ongoing
-                  funnelColors.slate, // Abandoned
-                  funnelColors.amber, // False Reports
-                  funnelColors.crimson, // Escalated
+                  colorPalette.chart.blue,
+                  colorPalette.chart.teal,
+                  colorPalette.chart.green,
+                  colorPalette.chart.orange,
+                  colorPalette.chart.purple,
+                  colorPalette.chart.yellow,
+                  colorPalette.chart.red,
                 ],
                 borderWidth: 2,
                 borderRadius: 8,
@@ -611,7 +615,6 @@ export default function Analytics() {
       }
     }
 
-    // Broadcast Messages Chart
     if (messagesRef.current) {
       const ctx = messagesRef.current.getContext("2d");
       if (ctx) {
@@ -654,472 +657,480 @@ export default function Analytics() {
     }
   };
 
-  // 1. Fetch analytics data - only on analytics page
   useEffect(() => {
     if (isAnalyticsPage) {
       fetchAnalyticsData();
     }
-  }, [timeFrame, isAnalyticsPage]); // Add page check
+  }, [timeFrame, isAnalyticsPage]);
 
-  // 2. Render charts - only on analytics page
   useEffect(() => {
     if (!isAnalyticsPage) return;
 
     if (!loading) {
-      // Use requestAnimationFrame for better timing
       const timer = requestAnimationFrame(() => {
         renderCharts();
       });
 
       return () => cancelAnimationFrame(timer);
     }
-  }, [chartData, loading, isAnalyticsPage]); // Add page check
+  }, [chartData, loading, isAnalyticsPage]);
 
-  // 3. Cleanup charts - runs regardless of page
   useEffect(() => {
     return () => {
-      // Cleanup all charts on unmount
       if (incidentsChartRef.current) incidentsChartRef.current.destroy();
       if (timeChartRef.current) timeChartRef.current.destroy();
       if (typeChartRef.current) typeChartRef.current.destroy();
-      if (respondersChartRef.current) respondersChartRef.current.destroy();
+      //if (respondersChartRef.current) respondersChartRef.current.destroy();
       if (funnelChartRef.current) funnelChartRef.current.destroy();
     };
   }, []);
 
   if (loading) {
     return (
-      <div className="page-inner">
-        <div
-          className="d-flex justify-content-center align-items-center"
-          style={{
-            minHeight: "500px",
-            background: "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
-            borderRadius: "16px",
-            color: "white",
-            margin: "2rem",
-          }}
-        >
-          <div className="text-center">
-            <div
-              className="spinner-border mb-3"
-              role="status"
-              style={{
-                width: "3rem",
-                height: "3rem",
-                borderColor: "rgba(255,255,255,0.3)",
-                borderTopColor: "white",
-              }}
-            >
-              <span className="visually-hidden">Loading...</span>
-            </div>
-            <h5 className="fw-light">Loading analytics data...</h5>
-            <p className="opacity-75 small">
-              Preparing your dashboard insights
-            </p>
+      <div className="container-fluid py-4">
+        <div className="text-center">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
           </div>
+          <p className="mt-3 text-muted">Loading analytics data...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div
-      className="page-inner"
-      style={{ background: "#f8f9fa", minHeight: "100vh" }}
-    >
-      {/* Dashboard Header */}
-      <div
-        className="mb-4 p-4 text-white"
-        style={{
-          background: "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
-          borderRadius: "16px",
-          boxShadow: "0 8px 32px rgba(102, 126, 234, 0.3)",
-        }}
-      >
-        <div className="d-flex justify-content-between align-items-center">
-          <div>
-            <h2 className="mb-1 fw-bold">
-              <i className="fas fa-chart-line me-3"></i>
-              Analytics Dashboard
-            </h2>
-            <p className="mb-0 opacity-75">
-              Real-time insights and performance metrics for your community
-              safety platform
-            </p>
-          </div>
+    <>
+      <style jsx>{`
+        .stat-badge {
+          background: rgba(255, 255, 255, 0.2);
+          backdrop-filter: blur(10px);
+          padding: 8px 16px;
+          border-radius: 20px;
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: white;
+        }
 
-          {/* Time Frame Selector */}
-          <div className="d-flex align-items-center">
-            <label className="me-2 small fw-semibold opacity-75">
-              Time Frame:
-            </label>
-            <select
-              className="form-select form-select-sm fw-semibold"
-              value={timeFrame}
-              onChange={(e) => setTimeFrame(e.target.value as any)}
-              style={{
-                background: "rgba(255,255,255,0.2)",
-                border: "1px solid rgba(255,255,255,0.3)",
-                color: "white",
-                borderRadius: "8px",
-                backdropFilter: "blur(10px)",
-              }}
-            >
-              <option value="day" style={{ color: "#495057" }}>
-                Today
-              </option>
-              <option value="week" style={{ color: "#495057" }}>
-                This Week
-              </option>
-              <option value="month" style={{ color: "#495057" }}>
-                This Month
-              </option>
-              <option value="year" style={{ color: "#495057" }}>
-                This Year
-              </option>
-            </select>
-          </div>
-        </div>
-      </div>
+        .avatar {
+          width: 40px;
+          height: 40px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-weight: bold;
+          font-size: 1rem;
+        }
 
-      <div className="container-fluid">
-        <div className="row g-4">
-          {/* Key Metrics Cards */}
-          <div className="col-12">
-            <div className="row g-4 mb-4">
-              <div className="col-md-4">
-                <div
-                  className="card border-0 h-100"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
-                    color: "white",
-                    borderRadius: "16px",
-                    boxShadow: "0 8px 32px rgba(102, 126, 234, 0.3)",
-                  }}
-                >
-                  <div className="card-body text-center p-4">
-                    <i className="fas fa-exclamation-circle fa-2x mb-3 opacity-75"></i>
-                    <h3 className="fw-bold mb-1">
-                      {chartData.overview.reported}
-                    </h3>
-                    <p className="mb-0 opacity-75">Total Reported</p>
-                  </div>
-                </div>
+        .status-indicator {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+        }
+
+        .status-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+        }
+
+        .status-dot.active {
+          background-color: #28a745;
+          box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.25);
+        }
+
+        .status-dot.inactive {
+          background-color: #dc3545;
+          box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.25);
+        }
+
+        .table th {
+          background-color: #f8f9fa;
+          border-bottom: 2px solid #dee2e6;
+          font-weight: 600;
+          color: #495057;
+        }
+
+        .card {
+          border: none;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+            0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .card-header {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border-bottom: none;
+        }
+
+        .chart-container {
+          position: relative;
+          height: 300px;
+          margin-bottom: 1rem;
+        }
+
+        .legend-container {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          margin-top: 1rem;
+        }
+
+        .legend-item {
+          display: inline-flex;
+          align-items: center;
+          margin-right: 1rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .legend-color {
+          display: inline-block;
+          width: 14px;
+          height: 14px;
+          margin-right: 8px;
+          border-radius: 3px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .dropdown-menu {
+          border: none;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+            0 2px 4px -1px rgba(0, 0, 0, 0.06);
+          border-radius: 8px;
+          padding: 0.5rem;
+        }
+
+        .dropdown-item {
+          border-radius: 4px;
+          padding: 0.5rem 1rem;
+          font-size: 0.875rem;
+          transition: all 0.2s;
+        }
+
+        .dropdown-item:hover {
+          background-color: #f8f9fa;
+          color: #495057;
+        }
+
+        .dropdown-toggle::after {
+          margin-left: 0.5rem;
+        }
+      `}</style>
+
+      <div className="container-fluid py-4">
+        {/* Dashboard Header */}
+        <div className="card mb-4">
+          <div className="card-header text-white py-4">
+            <div className="d-flex justify-content-between align-items-center">
+              <div>
+                <h3 className="mb-1">
+                  <i className="fas fa-chart-line me-2"></i>
+                  Analytics Dashboard
+                </h3>
+                <p className="mb-0 opacity-75">
+                  Real-time insights and performance metrics for your community
+                  safety platform
+                </p>
               </div>
 
-              <div className="col-md-4">
-                <div
-                  className="card border-0 h-100"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, #28a745 0%, #20c997 100%)",
-                    color: "white",
-                    borderRadius: "16px",
-                    boxShadow: "0 8px 32px rgba(40, 167, 69, 0.3)",
-                  }}
-                >
-                  <div className="card-body text-center p-4">
-                    <i className="fas fa-check-circle fa-2x mb-3 opacity-75"></i>
-                    <h3 className="fw-bold mb-1">
-                      {chartData.overview.resolved}
-                    </h3>
-                    <p className="mb-0 opacity-75">Successfully Resolved</p>
-                  </div>
+              <div className="d-flex gap-3 align-items-center">
+                <div className="stat-badge">
+                  <i className="fas fa-exclamation-circle me-1"></i>
+                  {chartData.overview.reported} Reported
                 </div>
-              </div>
+                <div className="stat-badge">
+                  <i className="fas fa-check-circle me-1"></i>
+                  {chartData.overview.resolved} Resolved
+                </div>
 
-              <div className="col-md-4">
-                <div
-                  className="card border-0 h-100"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, #dc3545 0%, #e74c3c 100%)",
-                    color: "white",
-                    borderRadius: "16px",
-                    boxShadow: "0 8px 32px rgba(220, 53, 69, 0.3)",
-                  }}
-                >
-                  <div className="card-body text-center p-4">
-                    <i className="fas fa-clock fa-2x mb-3 opacity-75"></i>
-                    <h3 className="fw-bold mb-1">
-                      {chartData.overview.unresolved}
-                    </h3>
-                    <p className="mb-0 opacity-75">Pending Resolution</p>
+                <div className="dropdown">
+                  <button
+                    className="btn btn-light btn-sm dropdown-toggle"
+                    type="button"
+                    onClick={() => setIsTimeFrameOpen(!isTimeFrameOpen)}
+                    style={{ minWidth: "120px" }}
+                  >
+                    <i className="fas fa-calendar me-1"></i>
+                    {timeFrame.charAt(0).toUpperCase() + timeFrame.slice(1)}
+                  </button>
+                  <div
+                    className={`dropdown-menu ${isTimeFrameOpen ? "show" : ""}`}
+                  >
+                    <button
+                      className="dropdown-item"
+                      onClick={() => {
+                        setTimeFrame("day");
+                        setIsTimeFrameOpen(true);
+                      }}
+                    >
+                      Today
+                    </button>
+                    <button
+                      className="dropdown-item"
+                      onClick={() => {
+                        setTimeFrame("week");
+                        setIsTimeFrameOpen(false);
+                      }}
+                    >
+                      This Week
+                    </button>
+                    <button
+                      className="dropdown-item"
+                      onClick={() => {
+                        setTimeFrame("month");
+                        setIsTimeFrameOpen(false);
+                      }}
+                    >
+                      This Month
+                    </button>
+                    <button
+                      className="dropdown-item"
+                      onClick={() => {
+                        setTimeFrame("year");
+                        setIsTimeFrameOpen(false);
+                      }}
+                    >
+                      This Year
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-          {/* Total Incidents Overview */}
+        </div>
+
+        {/* Main Content */}
+        <div className="row g-4">
+          {/* Incidents Overview */}
           <div className="col-12">
-            <div
-              className="card border-0 shadow-sm"
-              style={{ borderRadius: "16px", overflow: "hidden" }}
-            >
-              <div
-                className="card-header border-0 py-4"
-                style={{ background: "#f8f9fa" }}
-              >
+            <div className="card">
+              <div className="card-header text-white py-3">
                 <div className="d-flex align-items-center">
-                  <div
-                    className="rounded-circle d-flex align-items-center justify-content-center me-3"
-                    style={{
-                      width: "48px",
-                      height: "48px",
-                      background:
-                        "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
-                      color: "white",
-                    }}
-                  >
+                  <div className="avatar me-3">
                     <i className="fas fa-chart-bar"></i>
                   </div>
                   <div>
-                    <h5 className="mb-1 fw-bold text-dark">
-                      Incidents Overview
-                    </h5>
-                    <p className="mb-0 text-muted small">
+                    <h5 className="mb-0">Incidents Overview</h5>
+                    <small className="opacity-75">
                       Comprehensive breakdown of incident statistics
-                    </p>
+                    </small>
                   </div>
                 </div>
               </div>
-              <div className="card-body p-4">
-                <div style={{ height: "300px", position: "relative" }}>
+              <div className="card-body">
+                <div className="chart-container">
                   <canvas ref={incidentsRef}></canvas>
                 </div>
-                <div id="incidentsLegend"></div>
+                <div id="incidentsLegend" className="legend-container"></div>
               </div>
             </div>
           </div>
-          {/* Reports Over Time & Reports by Type */}
+
+          {/* Reports Trend and Categories */}
           <div className="col-lg-6">
-            <div
-              className="card border-0 shadow-sm h-100"
-              style={{ borderRadius: "16px", overflow: "hidden" }}
-            >
-              <div
-                className="card-header border-0 py-4"
-                style={{ background: "#f8f9fa" }}
-              >
+            <div className="card h-100">
+              <div className="card-header text-white py-3">
                 <div className="d-flex align-items-center">
-                  <div
-                    className="rounded-circle d-flex align-items-center justify-content-center me-3"
-                    style={{
-                      width: "48px",
-                      height: "48px",
-                      background: colorPalette.gradients.info,
-                      color: "white",
-                    }}
-                  >
+                  <div className="avatar me-3">
                     <i className="fas fa-chart-line"></i>
                   </div>
                   <div>
-                    <h5 className="mb-1 fw-bold text-dark">Reports Trend</h5>
-                    <p className="mb-0 text-muted small">
+                    <h5 className="mb-0">Reports Trend</h5>
+                    <small className="opacity-75">
                       Historical reporting patterns and trends
-                    </p>
+                    </small>
                   </div>
                 </div>
               </div>
-              <div className="card-body p-4">
-                <div style={{ height: "350px", position: "relative" }}>
+              <div className="card-body">
+                <div className="chart-container" style={{ height: "350px" }}>
                   <canvas ref={timeRef}></canvas>
                 </div>
               </div>
             </div>
           </div>
+
           <div className="col-lg-6">
-            <div
-              className="card border-0 shadow-sm h-100"
-              style={{ borderRadius: "16px", overflow: "hidden" }}
-            >
-              <div
-                className="card-header border-0 py-4"
-                style={{ background: "#f8f9fa" }}
-              >
+            <div className="card h-100">
+              <div className="card-header text-white py-3">
                 <div className="d-flex align-items-center">
-                  <div
-                    className="rounded-circle d-flex align-items-center justify-content-center me-3"
-                    style={{
-                      width: "48px",
-                      height: "48px",
-                      background: colorPalette.gradients.warning,
-                      color: "white",
-                    }}
-                  >
+                  <div className="avatar me-3">
                     <i className="fas fa-tags"></i>
                   </div>
                   <div>
-                    <h5 className="mb-1 fw-bold text-dark">
-                      Report Categories
-                    </h5>
-                    <p className="mb-0 text-muted small">
+                    <h5 className="mb-0">Report Categories</h5>
+                    <small className="opacity-75">
                       Distribution of incident types and categories
-                    </p>
+                    </small>
                   </div>
                 </div>
               </div>
-              <div className="card-body p-4">
-                <div style={{ height: "350px", position: "relative" }}>
+              <div className="card-body">
+                <div className="chart-container" style={{ height: "350px" }}>
                   <canvas ref={typeRef}></canvas>
                 </div>
-                <div id="typeLegend"></div>
+                <div id="typeLegend" className="legend-container"></div>
               </div>
             </div>
           </div>
-          {/* Top Responders & Request Lifecycle */}
+
+          {/* Top Responders and Lifecycle 
           <div className="col-lg-6">
-            <div
-              className="card border-0 shadow-sm h-100"
-              style={{ borderRadius: "16px", overflow: "hidden" }}
-            >
-              <div
-                className="card-header border-0 py-4"
-                style={{ background: "#f8f9fa" }}
-              >
+            <div className="card h-100">
+              <div className="card-header text-white py-3">
                 <div className="d-flex align-items-center">
-                  <div
-                    className="rounded-circle d-flex align-items-center justify-content-center me-3"
-                    style={{
-                      width: "48px",
-                      height: "48px",
-                      background: colorPalette.gradients.success,
-                      color: "white",
-                    }}
-                  >
+                  <div className="avatar me-3">
                     <i className="fas fa-medal"></i>
                   </div>
                   <div>
-                    <h5 className="mb-1 fw-bold text-dark">Top Responders</h5>
-                    <p className="mb-0 text-muted small">
+                    <h5 className="mb-0">Top Responders</h5>
+                    <small className="opacity-75">
                       Most active community response members
-                    </p>
+                    </small>
                   </div>
                 </div>
               </div>
-              <div className="card-body p-4">
-                <div style={{ height: "350px", position: "relative" }}>
+              <div className="card-body">
+                <div className="chart-container" style={{ height: "350px" }}>
                   <canvas ref={respondersRef}></canvas>
                 </div>
-                <div id="respondersLegend"></div>
+                <div id="respondersLegend" className="legend-container"></div>
               </div>
             </div>
-          </div>
-          {/*Request Lifecycle card */}
+          </div>*/}
+          {/* Top Responders - Changed to list view */}
           <div className="col-lg-6">
-            <div
-              className="card border-0 shadow-sm h-100"
-              style={{ borderRadius: "16px", overflow: "hidden" }}
-            >
-              <div
-                className="card-header border-0 py-4"
-                style={{ background: "#f8f9fa" }}
-              >
+            <div className="card h-100">
+              <div className="card-header text-white py-3">
                 <div className="d-flex align-items-center">
-                  <div
-                    className="rounded-circle d-flex align-items-center justify-content-center me-3"
-                    style={{
-                      width: "48px",
-                      height: "48px",
-                      background: colorPalette.gradients.danger,
-                      color: "white",
-                    }}
-                  >
-                    <i className="fas fa-funnel-dollar"></i>
+                  <div className="avatar me-3">
+                    <i className="fas fa-medal"></i>
                   </div>
                   <div>
-                    <h5 className="mb-1 fw-bold text-dark">
-                      Request Lifecycle
-                    </h5>
-                    <p className="mb-0 text-muted small">
-                      Journey from report to resolution
-                    </p>
+                    <h5 className="mb-0">Top Responders</h5>
+                    <small className="opacity-75">
+                      Most active community response members
+                    </small>
                   </div>
                 </div>
               </div>
-              <div className="card-body p-4">
-                <div style={{ height: "350px", position: "relative" }}>
+              <div className="card-body">
+                {chartData.responders.labels.length === 0 ? (
+                  <p className="text-center text-muted my-4">
+                    No responder data available
+                  </p>
+                ) : (
+                  <div className="list-group">
+                    {chartData.responders.labels.map((label, index) => {
+                      // Parse responder info from label
+                      const name = label.split("(")[0].trim();
+                      const id = label.match(/ID: (\d+)\)/)?.[1] || "N/A";
+
+                      return (
+                        <div
+                          key={index}
+                          className="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                        >
+                          <div className="d-flex align-items-center">
+                            <div className="position-relative me-3">
+                              <div className="avatar-sm">
+                                <div className="avatar-title bg-primary bg-gradient rounded-circle">
+                                  <i className="fas fa-user"></i>
+                                </div>
+                              </div>
+                              <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                {index + 1}
+                              </span>
+                            </div>
+                            <div>
+                              <h6 className="mb-0">{name}</h6>
+                              <small className="text-muted">ID: {id}</small>
+                            </div>
+                          </div>
+                          <span className="badge bg-primary bg-gradient rounded-pill">
+                            {chartData.responders.data[index]} responses
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="col-lg-6">
+            <div className="card h-100">
+              <div className="card-header text-white py-3">
+                <div className="d-flex align-items-center">
+                  <div className="avatar me-3">
+                    <i className="fas fa-briefcase-medical"></i>
+                  </div>
+                  <div>
+                    <h5 className="mb-0">Request Lifecycle</h5>
+                    <small className="opacity-75">
+                      Journey from report to resolution
+                    </small>
+                  </div>
+                </div>
+              </div>
+              <div className="card-body">
+                <div className="chart-container" style={{ height: "350px" }}>
                   <canvas ref={funnelRef}></canvas>
                 </div>
-                <div id="funnelLegend"></div>
+                <div id="funnelLegend" className="legend-container"></div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/*vs*/}
-        <div className="col-12">
-          <div
-            className="card border-0 shadow-sm"
-            style={{ borderRadius: "16px" }}
-          >
-            <div
-              className="card-header border-0 py-4"
-              style={{ background: "#f8f9fa" }}
-            >
-              <div className="d-flex align-items-center">
-                <div
-                  className="rounded-circle d-flex align-items-center justify-content-center me-3"
-                  style={{
-                    width: "48px",
-                    height: "48px",
-                    background: colorPalette.gradients.info,
-                    color: "white",
-                  }}
-                >
-                  <i className="fas fa-bullhorn"></i>
-                </div>
-                <div>
-                  <h5 className="mb-1 fw-bold text-dark">Broadcast Messages</h5>
-                  <p className="mb-0 text-muted small">
-                    Channel message analytics and moderation status
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="card-body p-4">
-              <div style={{ height: "300px", position: "relative" }}>
-                <canvas ref={messagesRef}></canvas>
-              </div>
-              <div id="messagesLegend"></div>
-            </div>
-          </div>
-        </div>
-
-        {/* Dashboard Footer */}
-        <div className="row mt-4">
+          {/* Messages */}
           <div className="col-12">
-            <div
-              className="card border-0 text-center"
-              style={{
-                background: "linear-gradient(135deg, #495057 0%, #6c757d 100%)",
-                color: "white",
-                borderRadius: "16px",
-                boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-              }}
-            >
-              <div className="card-body py-3">
-                <div className="d-flex justify-content-center align-items-center flex-wrap gap-4">
-                  <div className="d-flex align-items-center">
-                    <i className="fas fa-clock me-2"></i>
-                    <small>Last updated: {new Date().toLocaleString()}</small>
+            <div className="card">
+              <div className="card-header text-white py-3">
+                <div className="d-flex align-items-center">
+                  <div className="avatar me-3">
+                    <i className="fas fa-bullhorn"></i>
                   </div>
-                  <div className="d-flex align-items-center">
-                    <i className="fas fa-sync me-2"></i>
-                    <small>Auto-refresh: Every 5 minutes</small>
-                  </div>
-                  <div className="d-flex align-items-center">
-                    <i className="fas fa-shield-alt me-2"></i>
-                    <small>Data secured and encrypted</small>
+                  <div>
+                    <h5 className="mb-0">Broadcast Messages</h5>
+                    <small className="opacity-75">
+                      Channel message analytics and moderation status
+                    </small>
                   </div>
                 </div>
+              </div>
+              <div className="card-body">
+                <div className="chart-container">
+                  <canvas ref={messagesRef}></canvas>
+                </div>
+                <div id="messagesLegend" className="legend-container"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="card mt-4">
+          <div className="card-body py-3 text-center">
+            <div className="d-flex justify-content-center flex-wrap gap-4">
+              <div className="d-flex align-items-center text-muted small">
+                <i className="fas fa-clock me-2"></i>
+                Last updated: {new Date().toLocaleString()}
+              </div>
+              <div className="d-flex align-items-center text-muted small">
+                <i className="fas fa-sync me-2"></i>
+                Auto-refresh: Every 5 minutes
+              </div>
+              <div className="d-flex align-items-center text-muted small">
+                <i className="fas fa-shield-alt me-2"></i>
+                Data secured and encrypted
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

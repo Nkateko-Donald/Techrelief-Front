@@ -1,6 +1,11 @@
 // src/utils/roleCheck.ts
 
-// Define roles that have community leader privileges
+type User = {
+  Role?: string;
+  UserType?: string;
+  // Add other properties you need
+};
+
 const COMMUNITY_LEADER_ROLES = ["CommunityLeader", "SystemAdmin"];
 
 export const hasCommunityLeaderAccess = (role?: string): boolean => {
@@ -8,11 +13,8 @@ export const hasCommunityLeaderAccess = (role?: string): boolean => {
   return COMMUNITY_LEADER_ROLES.includes(role);
 };
 
-// Optional: For more complex role hierarchies
 export const hasModerationPrivileges = (user: User | null): boolean => {
   if (!user) return false;
-  
-  // Add your custom logic here
   return (
     user.Role === "SystemAdmin" ||
     user.Role === "CommunityLeader" ||

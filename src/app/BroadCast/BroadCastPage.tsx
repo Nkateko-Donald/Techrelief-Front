@@ -23,11 +23,6 @@ interface Message extends RawMessage {
   dateGroup: string;
 }
 
-// In BroadcastPage component
-const generateNotificationLink = (messageId: number) => {
-  return `/BroadCast#msg-${messageId}`;
-};
-
 export default function BroadcastPage() {
   const { user, isAuthenticated } = useAuth();
   const { showNotification } = useNotification();
@@ -77,7 +72,7 @@ export default function BroadcastPage() {
 
       // Optional: Refetch notifications or update state
       console.log("All broadcast notifications marked as read");
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Failed to mark notifications as read:", err);
     }
   }, [user]);
@@ -141,7 +136,7 @@ export default function BroadcastPage() {
 
       setMessages(formattedMessages);
       setLoading(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError("Failed to load messages. Please try again.");
       setLoading(false);
       console.error("Message fetch error:", err);
@@ -202,8 +197,9 @@ export default function BroadcastPage() {
       } else {
         throw new Error(await response.text());
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to disable message");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      setError(errorMessage);
     }
   };
 
@@ -232,8 +228,9 @@ export default function BroadcastPage() {
       } else {
         throw new Error(await response.text());
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to restore message");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      setError(errorMessage);
     }
   };
 
@@ -290,9 +287,10 @@ export default function BroadcastPage() {
             : msg
         )
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessages((prev) => prev.filter((m) => m.MessageID !== tempId));
-      setError(err.message || "Failed to send message");
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      setError(errorMessage || "Failed to send message");
     }
   };
 
@@ -448,33 +446,15 @@ export default function BroadcastPage() {
     setCurrentImage(currentMessageImages[newIndex]);
   };
 
+  // Loading state
   if (loading) {
     return (
-      <div className="page-inner">
-        <div
-          className="d-flex justify-content-center align-items-center"
-          style={{
-            minHeight: "400px",
-            background: "linear-gradient(135deg, #ff0000 0%, #764ba2 100%)",
-            borderRadius: "12px",
-            color: "white",
-          }}
-        >
-          <div className="text-center">
-            <div
-              className="spinner-border mb-3"
-              role="status"
-              style={{
-                width: "3rem",
-                height: "3rem",
-                borderColor: "rgba(255,255,255,0.3)",
-                borderTopColor: "white",
-              }}
-            >
-              <span className="visually-hidden">Loading...</span>
-            </div>
-            <h5 className="fw-light">Loading community members...</h5>
+      <div className="container-fluid py-4">
+        <div className="text-center">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
           </div>
+          <p className="mt-3 text-muted">Loading Broadcast...</p>
         </div>
       </div>
     );
